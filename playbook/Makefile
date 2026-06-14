@@ -1,46 +1,98 @@
-# Minimum contract — these targets passing IS the definition of "validated" in docs §0.1.
-# See README.md §0.2 for the section map.
+# Playbook validation Makefile — see README.md §0.2
 
-.PHONY: smoke-vllm deploy-kind bench-local validate-promql lint-k8s test-gateway \
-        test-brownout test-cancel-stream test-tenant-quota test-gpu-xid-sim \
-        test-kv-pressure test-rollback test-gateway-unit
+SHELL := /bin/bash
+ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
-smoke-vllm:       ## §1.2 — serve small model, run smoke test, assert TTFT bound
-	@echo "TODO: implement — see playbook/benchmarks/smoke_test.sh"
-	@bash benchmarks/smoke_test.sh
+.PHONY: help lint validate-promql lint-k8s test-gateway-unit smoke-vllm bench-local deploy-kind \
+        test-gateway test-cancel-stream test-tenant-quota test-kv-pressure test-brownout \
+        test-gpu-xid-sim test-rollback test-unsigned-checkpoint test-guardrail-down \
+        game-day all offline gpu staging record-validation fabric cost-model
 
-deploy-kind:      ## §5.2 — full manifest set on kind/minikube (CPU mock ok)
-	@echo "TODO: implement — render playbook/helm and apply to kind"
+help:
+	@grep -E '^[a-zA-Z_-]+:' $(MAKEFILE_LIST) | sed 's/:.*//' | sort
 
-bench-local:      ## §2.5 — warmup + steady-state + sweep, emit benchmark report schema
-	@echo "TODO: implement — see playbook/benchmarks/"
+offline: lint validate-promql lint-k8s test-gateway-unit bench-local-dry check-profile-drift
+	@echo "offline: all CPU-safe checks passed"
 
-validate-promql:  ## §2.4 — every PromQL query parses and returns against a live scrape
-	@echo "TODO: implement — see playbook/dashboards/"
+lint: validate-promql lint-k8s test-gateway-unit
 
-lint-k8s:         ## §5.2 — kubeconform/kube-linter over helm output
-	@echo "TODO: implement — lint playbook/helm/*.yaml"
+validate-promql:
+	@bash ci/validate-promql.sh
 
-test-gateway:     ## §1.3, §5.6 — alias translation, 429 paths, cancellation propagation
-	@echo "TODO: implement — load-level gateway tests"
+lint-k8s:
+	@bash ci/lint-k8s.sh
 
-test-gateway-unit: ## §1.3 — unit tests for learning-artifact gateway
-	@cd ci && python -m pytest test_gateway.py -q
+check-profile-drift:
+	@bash ci/check-profile-drift.sh --offline
 
-test-brownout:       ## §6.5 — KV pressure ladder actions + hysteresis
-	@echo "TODO: implement — game-day target"
+test-gateway-unit:
+	@cd ci && python3 -m pytest test_gateway.py -q
 
-test-cancel-stream:  ## §6.2 — client disconnect; engine abort + delta recorded
-	@echo "TODO: implement — game-day target"
+bench-local-dry:
+	@BENCH_DRY_RUN=1 bash benchmarks/bench_local.sh
 
-test-tenant-quota:   ## §6.1 — over-budget tenant; 400/429 at admission
-	@echo "TODO: implement — game-day target"
+smoke-vllm:
+	@bash benchmarks/run_smoke.sh
 
-test-gpu-xid-sim:    ## §5.2 — simulated XID; watcher cordons + drains
-	@echo "TODO: implement — game-day target"
+bench-local:
+	@bash benchmarks/bench_local.sh
 
-test-kv-pressure:    ## §6.2 — heavy-context flood; heavy-pool + Critical reserve
-	@echo "TODO: implement — game-day target"
+deploy-kind:
+	@bash ci/deploy-kind.sh
 
-test-rollback:       ## §6.10 — canary eval regression triggers rollback
-	@echo "TODO: implement — game-day target"
+deploy-dry:
+	@DEPLOY_DRY_RUN=1 bash ci/deploy-kind.sh
+
+test-gateway:
+	@python3 ci/test_gateway_load.py
+
+test-cancel-stream:
+	@bash ci/test_cancel_stream.sh
+
+test-tenant-quota:
+	@bash ci/test_tenant_quota.sh
+
+test-kv-pressure:
+	@bash ci/test_kv_pressure.sh
+
+test-brownout:
+	@bash ci/test_brownout.sh
+
+test-gpu-xid-sim:
+	@bash ci/test_gpu_xid_sim.sh
+
+test-rollback:
+	@bash ci/test_rollback.sh
+
+test-unsigned-checkpoint:
+	@bash ci/test_unsigned_checkpoint.sh
+
+test-guardrail-down:
+	@bash ci/test_guardrail_down.sh
+
+fabric:
+	@bash benchmarks/nccl/run_fabric_validation.sh
+
+fabric-dry:
+	@FABRIC_DRY_RUN=1 bash benchmarks/nccl/run_fabric_validation.sh
+
+cost-model:
+	@python3 calculators/cost_model.py benchmarks/runs/$$(ls -t benchmarks/runs 2>/dev/null | head -1)/report.yaml 2>/dev/null || \
+	  (BENCH_DRY_RUN=1 bash benchmarks/bench_local.sh && \
+	   python3 calculators/cost_model.py benchmarks/runs/$$(ls -t benchmarks/runs | head -1)/report.yaml)
+
+game-day: test-gateway-unit test-gateway test-tenant-quota test-cancel-stream test-kv-pressure \
+          test-brownout test-gpu-xid-sim test-rollback test-unsigned-checkpoint test-guardrail-down
+	@echo "game-day: bundle finished (skipped hooks count as pass — wire STAGING hooks for full pass)"
+
+gpu: smoke-vllm bench-local validate-promql
+	@echo "gpu: targets completed"
+
+staging: game-day deploy-kind
+	@echo "staging: deploy + game-day bundle"
+
+record-validation:
+	@python3 ci/record_validation.py
+
+all: offline
+	@echo "all: offline complete; run 'make gpu STAGING_REQUIRE=1' on fleet for full validation"

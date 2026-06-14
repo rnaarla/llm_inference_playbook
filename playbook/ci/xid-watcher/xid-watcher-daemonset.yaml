@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: xid-watcher
+  namespace: inference
+spec:
+  selector:
+    matchLabels:
+      app: xid-watcher
+  template:
+    metadata:
+      labels:
+        app: xid-watcher
+    spec:
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: watcher
+          image: nvcr.io/nvidia/k8s/dcgm-exporter:3.3.8-3.4.0-ubuntu22.04
+          env:
+            - name: XID_RECOVERABLE
+              value: "13,31"
+            - name: XID_FATAL
+              value: "79,94"
+          # Replace with org-specific watcher entrypoint that cordons/restarts per README

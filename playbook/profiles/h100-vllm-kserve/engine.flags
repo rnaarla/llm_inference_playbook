@@ -1,0 +1,13 @@
+# h100-vllm-kserve — production vLLM serve flags (pin matches versions.lock)
+--model meta-llama/Llama-3.1-70B-Instruct
+--tensor-parallel-size 2
+--dtype bfloat16
+--quantization fp8
+--kv-cache-dtype fp8
+--max-model-len 16384
+--max-num-seqs 256
+--max-num-batched-tokens 8192
+--enable-prefix-caching
+--enable-chunked-prefill
+--gpu-memory-utilization 0.90
+--port 8000

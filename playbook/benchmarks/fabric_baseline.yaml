@@ -1,0 +1,8 @@
+# fabric baseline — dry-run template (fill on GPU cluster)
+topology: HGX-H100-NVSwitch
+date: "2026-06-14T17:47:38-04:00"
+macro_1g_8g_busbw_gbs: 0
+micro_8_2m_busbw_gbs: 0
+nccl_algo: Tree
+nccl_proto: Simple
+notes: "Run nccl-tests all_reduce_perf on TP group; gate >= 80% theoretical"

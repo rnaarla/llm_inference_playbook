@@ -20,7 +20,7 @@ spec:
         seccompProfile: { type: RuntimeDefault }
       containers:
       - name: vllm
-        image: vllm/vllm-openai:vX.Y.Z
+        image: vllm/vllm-openai:v0.9.1
         args: ["--model","meta-llama/Llama-3.1-70B-Instruct",
                "--tensor-parallel-size","2","--quantization","fp8",
                "--kv-cache-dtype","fp8","--max-model-len","16384",

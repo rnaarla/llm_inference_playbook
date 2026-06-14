@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - deployment.yaml
+  - service.yaml
+  - pvc.yaml
+  - pdb.yaml
+  - networkpolicy.yaml
+  - keda-scaledobject.yaml
+images:
+  - name: vllm/vllm-openai
+    newName: vllm/vllm-openai
+    newTag: v0.9.1  # override via profiles/h100-vllm-kserve — run make lint-k8s after pin change

@@ -41,6 +41,8 @@
 | [C-cohosting-boundary.md](docs/appendices/C-cohosting-boundary.md) | Embeddings / multimodal boundary |
 | [D-evidence-ledger.md](docs/appendices/D-evidence-ledger.md) | Validation ledger |
 | [E-caveats.md](docs/appendices/E-caveats.md) | Caveats |
+| [moe-multi-node-topology.md](docs/companions/moe-multi-node-topology.md) | MoE / 405B+ companion |
+| [cohosting-embeddings-multimodal.md](docs/companions/cohosting-embeddings-multimodal.md) | Embeddings / multimodal companion |
 
 ---
 
@@ -104,8 +106,8 @@ Out-of-scope topics with explicit decision thresholds. Do not infer topology/eng
 
 | Companion | Read when | Inputs from core playbook | Interim guidance |
 |---|---|---|---|
-| **MoE / multi-node topology** (405B–671B) | EP needed (§5.1), fabric validated (§5.4), decision needs NVLink-domain planning or wide-EP routing | §3.5 parallelism table, §5.1 tree, §5.4 gates | §5.4–5.5 |
-| **Embeddings / rerankers / multimodal** | Co-hosting non-chat workloads on the inference cluster | [Appendix C](appendices/C-cohosting-boundary.md) boundary | Appendix C |
+| **MoE / multi-node topology** (405B–671B) | EP needed (§5.1), fabric validated (§5.4), decision needs NVLink-domain planning or wide-EP routing | §3.5 parallelism table, §5.1 tree, §5.4 gates | [companions/moe-multi-node-topology.md](docs/companions/moe-multi-node-topology.md) |
+| **Embeddings / rerankers / multimodal** | Co-hosting non-chat workloads on the inference cluster | [Appendix C](docs/appendices/C-cohosting-boundary.md) boundary | [companions/cohosting-embeddings-multimodal.md](docs/companions/cohosting-embeddings-multimodal.md) |
 
 If your decision requires deferred companion material, this playbook is **insufficient** for that decision alone.
 
@@ -126,4 +128,14 @@ If your decision requires deferred companion material, this playbook is **insuff
 | `test-gpu-xid-sim` | §5.2 | SRE |
 | `test-rollback` | §6.10 | Platform + Quality |
 
+## Validation status
+
+| Layer | Status | Command |
+|---|---|---|
+| Offline CI (lint, unit, schemas) | **IMPLEMENTED** | `make -C playbook offline` |
+| Pinned stack (`versions.lock`) | **PINNED** — `validated_on` empty until fleet run | fill via `make -C playbook record-validation` after GPU pass |
+| GPU smoke + bench | **SCRIPTS READY** | `make -C playbook gpu` (requires live vLLM) |
+| Staging game-day | **HOOKS READY** | `make -C playbook game-day` + set `*_HOOK` env vars |
+| MoE / multimodal companions | **DRAFT COMPLETE** | `docs/companions/` |
+| Appendix D.2 fleet evidence | **BLOCKING until fleet run** | see [D-evidence-ledger](docs/appendices/D-evidence-ledger.md) |
 

@@ -1,0 +1,36 @@
+name: playbook-ci
+
+on:
+  push:
+    branches: [main]
+    paths: ['playbook/**', 'docs/**', 'README.md', '.github/workflows/playbook-ci.yml']
+  pull_request:
+    paths: ['playbook/**', 'docs/**', 'README.md', '.github/workflows/playbook-ci.yml']
+
+jobs:
+  lint-and-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dev dependencies
+        run: |
+          python3 -m venv playbook/.venv
+          playbook/.venv/bin/pip install -r playbook/requirements-dev.txt
+      - name: lint-k8s (structural)
+        run: bash playbook/ci/lint-k8s.sh
+      - name: validate-promql (offline)
+        run: bash playbook/ci/validate-promql.sh
+      - name: test-gateway-unit
+        run: PATH="$PWD/playbook/.venv/bin:$PATH" make -C playbook test-gateway-unit
+      - name: offline bundle
+        run: PATH="$PWD/playbook/.venv/bin:$PATH" make -C playbook offline
+
+  gpu-validation:
+    runs-on: ubuntu-latest
+    if: false  # enable on self-hosted GPU runner: if: github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      - run: make -C playbook smoke-vllm bench-local validate-promql

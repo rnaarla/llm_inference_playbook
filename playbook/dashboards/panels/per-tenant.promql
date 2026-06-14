@@ -1,0 +1,4 @@
+histogram_quantile(0.95, sum by (tenant, le) (rate(vllm:time_to_first_token_seconds_bucket[5m])))
+sum by (tenant) (rate(gateway_requests_total{outcome="queued"}[5m]))
+sum by (tenant) (rate(gateway_requests_total{outcome="shed_429"}[5m]))
+max(tenant_fairness_debt) - min(tenant_fairness_debt)

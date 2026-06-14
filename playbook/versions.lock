@@ -1,16 +1,25 @@
-# versions.lock — one entry per validated profile. NO artifact ships against an unfilled profile.
+# versions.lock — NO artifact ships against an unfilled validated_on.
 profiles:
-  - profile: h100-vllm-kserve          # canonical serving profile
-    vllm: ""                            # flags, metric names, --speculative-config schema shift by release
-    cuda: ""
-    nvidia_driver: ""
-    nccl: ""
-    kubernetes: ""
-    kserve: ""                          # LLMInferenceService CRD shape has churned
-    gateway_api_inference_extension: ""
-    dcgm_exporter: ""
-    validated_on: ""                    # date the smoke + bench suite (§0.2) last passed
-    validated_by: ""
-  - profile: sglang-structured          # add per-workload profiles as adopted
-    sglang: ""
+  - profile: h100-vllm-kserve
+    vllm: "0.9.1"
+    cuda: "12.4"
+    nvidia_driver: "550.54.15"
+    nccl: "2.21.5"
+    kubernetes: "1.29"
+    kserve: "0.14.0"
+    gateway_api_inference_extension: "0.1.0"
+    dcgm_exporter: "3.3.8"
     validated_on: ""
+    validated_by: ""
+  - profile: moe-multinode-interim
+    vllm: "0.9.1"
+    cuda: "12.4"
+    nccl: "2.21.5"
+    kubernetes: "1.29"
+    notes: "405B+ MoE — validate fabric per docs/companions/moe-multi-node-topology.md"
+    validated_on: ""
+    validated_by: ""
+  - profile: sglang-structured
+    sglang: "0.4.6"
+    validated_on: ""
+    validated_by: ""

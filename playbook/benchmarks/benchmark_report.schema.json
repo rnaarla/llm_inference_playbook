@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/rnaarla/llm_inference_playbook/benchmark_report",
+  "title": "benchmark_report",
+  "type": "object",
+  "required": ["profile", "model", "hardware", "traffic", "results", "decisions", "run"],
+  "properties": {
+    "profile": { "type": "string", "minLength": 1 },
+    "model": { "type": "string" },
+    "hardware": { "type": "string" },
+    "traffic": {
+      "type": "object",
+      "required": ["source", "prompt_tokens", "output_tokens", "cache_hit_rate", "structured_output_fraction"],
+      "properties": {
+        "source": { "type": "string" },
+        "prompt_tokens": { "$ref": "#/$defs/percentiles" },
+        "output_tokens": { "$ref": "#/$defs/percentiles" },
+        "cache_hit_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "structured_output_fraction": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "results": {
+      "type": "object",
+      "required": ["ttft_ms", "tpot_ms", "e2e_s", "goodput_knee", "queue_wait_ms_p95", "preemptions", "kv_usage_peak", "dram_active_mean"],
+      "properties": {
+        "ttft_ms": { "$ref": "#/$defs/percentiles_hit_miss" },
+        "tpot_ms": { "$ref": "#/$defs/percentiles" },
+        "e2e_s": { "$ref": "#/$defs/percentiles" },
+        "goodput_knee": {
+          "type": "object",
+          "required": ["concurrency", "output_tok_s", "input_tok_s"],
+          "properties": {
+            "concurrency": { "type": "number" },
+            "output_tok_s": { "type": "number" },
+            "input_tok_s": { "type": "number" }
+          }
+        },
+        "queue_wait_ms_p95": { "type": "number" },
+        "preemptions": { "type": "number" },
+        "kv_usage_peak": { "type": "number" },
+        "dram_active_mean": { "type": "number" }
+      }
+    },
+    "decisions": {
+      "type": "object",
+      "required": ["per_replica_concurrency_cap", "replica_count", "keda_queue_threshold", "cost_per_1M"],
+      "properties": {
+        "per_replica_concurrency_cap": { "type": "number" },
+        "replica_count": { "type": "number" },
+        "keda_queue_threshold": { "type": "number" },
+        "cost_per_1M": {
+          "type": "object",
+          "required": ["input", "output", "total"],
+          "properties": {
+            "input": { "type": "number" },
+            "output": { "type": "number" },
+            "total": { "type": "number" }
+          }
+        }
+      }
+    },
+    "run": {
+      "type": "object",
+      "required": ["warmup_min", "steady_min", "date", "operator"],
+      "properties": {
+        "warmup_min": { "type": "number" },
+        "steady_min": { "type": "number" },
+        "date": { "type": "string" },
+        "operator": { "type": "string" }
+      }
+    }
+  },
+  "$defs": {
+    "percentiles": {
+      "type": "object",
+      "required": ["p50", "p95", "p99"],
+      "properties": {
+        "p50": { "type": "number" },
+        "p95": { "type": "number" },
+        "p99": { "type": "number" }
+      }
+    },
+    "percentiles_hit_miss": {
+      "allOf": [
+        { "$ref": "#/$defs/percentiles" },
+        {
+          "type": "object",
+          "required": ["hit_p95", "miss_p95"],
+          "properties": {
+            "hit_p95": { "type": "number" },
+            "miss_p95": { "type": "number" }
+          }
+        }
+      ]
+    }
+  }
+}
