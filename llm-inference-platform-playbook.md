@@ -395,6 +395,7 @@ DCGM_FI_PROF_DRAM_ACTIVE
 ```promql
 # Engine/gateway metric names here are profile-pinned examples; adapt to your deployed stack.
 # Per-tenant TTFT P95 (requires tenant label stamped at the gateway, §6.1)
+# Example engine metric name (`vllm:*`); replace with your engine's TTFT histogram metric.
 histogram_quantile(0.95, sum by (tenant, le) (rate(vllm:time_to_first_token_seconds_bucket[5m])))
 # Per-tenant queue pressure and shed rate (gateway metric names are examples; adapt to your deployed gateway)
 sum by (tenant) (rate(gateway_requests_total{outcome="queued"}[5m]))
@@ -1069,7 +1070,7 @@ Request/response **audit schema**: timestamp, `X-Request-ID`, tenant, model+revi
 
 Pipeline: **private OCI registry** (ORAS/registry-native model artifacts) → **sign** (sigstore/cosign) → **scan** (pickle/code-exec scanning for non-safetensors; CVE scan on serving images) → **model card** with provenance, license, eval results stored alongside the artifact → **promotion pipeline** dev→staging→prod gated on §6.10 evals. Runtime pulls **only** signed tags from the internal registry; admission of an unsigned artifact is a build-time failure, not a runtime discovery.
 
-Extend this to **load-time verification**: an init container/sidecar runs `cosign verify` and digest-pin checks before `vllm serve` starts, so a tampered/swapped local checkpoint is rejected at startup. If verification cannot be completed, the pod fails readiness and never serves unverified weights.
+Extend this to **load-time verification**: an init container/sidecar runs `cosign verify` and digest-pin checks before `vllm serve` starts, so a tampered/swapped local checkpoint is rejected at startup. Digest pinning here means comparing the pulled artifact's content digest (for example, SHA256) to the approved digest recorded in release metadata. If verification cannot be completed, the pod fails readiness and never serves unverified weights.
 
 Generate and retain an SBOM for the serving image (and ideally the model artifact bundle) so CVE response can answer "which deployments contain component X" without a fleet scrape. Attach SLSA provenance attestations to model artifacts and verify those attestations in the §6.10 promotion gate so promoted artifacts are traceable to their build inputs.
 
@@ -1095,11 +1096,11 @@ Severity matrix (SEV1 = Critical-tenant SLO breach or fleet-wide goodput collaps
 
 ## 6.12 Safety & guardrail serving path (owner: gateway + safety)
 
-Mechanism: insert guardrails in the serving path, not just policy docs. Input moderation and prompt-injection screening run at the gateway **after** auth/admission (§6.1) and **before** engine dispatch, and output moderation runs on the generated stream per the lifecycle/contract in §1.1 and §1.3. Guardrail components can use dedicated safety models and frameworks (examples: Llama Guard, ShieldGemma, NeMo Guardrails) for input/output policy checks plus PII detection/redaction on both ingress and egress; §6.8 remains the logging/audit-policy layer, while this section is the online enforcement layer.
+Mechanism: insert guardrails in the serving path, not just policy docs. Input moderation and prompt-injection screening run at the gateway **after** auth/admission (§6.1) and **before** engine dispatch, and output moderation runs on the generated stream per the lifecycle/contract in §1.1 and §1.3. Guardrail components can use dedicated safety models and frameworks (examples: Llama Guard, ShieldGemma, NeMo Guardrails) for input/output policy checks plus PII detection/redaction on both ingress and egress. §6.8 remains the logging/audit-policy layer, while this section is the online enforcement layer.
 
-Failure mode: guardrails are an extra forward pass in the critical path, so they spend TTFT/E2E budget (§1.1, §2.5). Mitigate with a small shared guardrail pool, batching, or overlapping input screening with tokenization/queueing. For streaming output moderation, inspect chunks so first token is not blocked on full completion; the trade-off is earlier delivery versus a late-stream violation that still requires termination.
+Failure mode: guardrails are an extra forward pass in the critical path, so they spend TTFT/E2E budget (§1.1, §2.5). Mitigate with a small shared guardrail pool, batching, or overlapping input screening with tokenization/queueing so part of the safety compute is hidden under work already on the critical path. For streaming output moderation, inspect chunks so first token is not blocked on full completion; the trade-off is earlier delivery versus a late-stream violation that still requires termination.
 
-Policy decision (per-route, explicit, and reviewed like §6.1 fail-static admission): safety-required routes fail-closed on guardrail timeout/outage (safe refusal). Lower-risk routes may fail-open with mandatory logging/escalation, and this asymmetry is explicit — fail-open on safety is a safety incident, not only availability debt.
+Policy decision (per-route, explicit, and reviewed like §6.1 fail-static admission): safety-required routes fail-closed on guardrail timeout/outage (safe refusal). Lower-risk routes may fail-open with mandatory logging/escalation, and this asymmetry is explicit — when a safety-required route fails open, classify it as a safety incident, not only availability debt.
 
 Streaming cutoff semantics: if output moderation flags mid-stream, gateway emits terminal refusal/error, stops downstream bytes, and triggers cancellation on the engine path (§1.3/§6.1 abort path) to avoid unnecessary decoding compute.
 
