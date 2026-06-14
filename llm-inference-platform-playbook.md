@@ -225,6 +225,7 @@ authn/authz; model-alias translation; **admission control** (per-tenant token bu
 | **NGINX / HAProxy** | Plain L7 when nothing model-aware is needed |
 
 **Streaming decision:** SSE for chat (unidirectional, OpenAI standard, proxy-friendly); WebSockets only for duplex (voice, interruptible agents); non-streaming for batch/internal calls. Hardening: disable proxy buffering (`proxy_buffering off`), idle timeout > max generation time, propagate `X-Request-ID`, enforce response-size and stream-duration ceilings.
+**TCP Half-Open Mitigation:** Client disconnects are often silent (e.g., a mobile client dropping off the network without sending a FIN/RST packet). If the gateway does not notice, the engine bleeds decode capacity generating tokens for a vanished client. At MAANG scale, **strict HTTP/2 PING frames and TCP keepalives** must be tuned at the Envoy layer to detect dead connections in < 5 seconds and forcibly sever upstream streams.
 
 ---
 
@@ -504,7 +505,7 @@ Build this against a 1B model and you understand 80% of vLLM's scheduler — inc
 - **Continuous batching**: waiting/running/swapped queues; token-granular admission; preemption by recompute or swap when KV exhausts.
 - **V1 engine** (default in 2025-era releases — verify your pin): zero-copy DMA, pinned host memory, restructured scheduler, independent prefill/decode handling.
 - **Chunked prefill** (Sarathi lineage): long prefills split into `--max-num-batched-tokens` chunks, piggybacked with decodes → protects ITL from long-prompt interference.
-- Prefix caching, piecewise CUDA graphs, torch.compile, FlashAttention/FlashInfer kernel stack.
+- Prefix caching, piecewise CUDA graphs, torch.compile, FlashAttention/FlashInfer kernel stack. **MAANG-scale CUDA Graph Warning:** Dynamic batching and sequence length variations cause CUDA graph memory pools to splinter. To prevent VRAM OOMs and avoid catastrophic host-device sync overhead, you must mandate custom graph management (e.g., heavily bucketized graph capturing and padding to power-of-2 sequence lengths).
 
 ## 3.3 SGLang internals
 - **RadixAttention** **[Cited: SGLang paper/LMSYS report, Jan 2024]**: KV cache in a radix tree keyed by token sequence; matched prefixes cost zero prefill; **LRU eviction** over tree nodes under memory pressure — note that under severe pressure, eviction of hot shared prefixes converts cache-hit traffic to cache-miss TTFT, which is why hit-rate monitoring matters (§2.5). Up to 6.4× on prefix-heavy workloads vs then-current vLLM (paper config; vLLM has since added prefix caching — re-benchmark, **[Directional]**).
@@ -540,6 +541,8 @@ Megatron-style TP on a standard transformer block requires communication after *
 | **NVIDIA Dynamo** | Disaggregated P/D, KV-aware routing, multi-node | Cluster-scale over vLLM/SGLang/TRT-LLM backends |
 | **LMDeploy / DeepSpeed-MII** | TurboMind; Mooncake PD integration | Alternative runtimes, specific fits |
 
+**MAANG Requirement — Phase Out the Python GIL:** At heavy concurrency (hundreds of in-flight requests), Python's Global Interpreter Lock (GIL) within the scheduling/engine loop becomes the ceiling on QPS, severely thrashing `TPOT`. MAANG-scale platforms mandate pure C++ execution backends for their high-throughput standard tiers. You must migrate completely to engines with C++ core schedulers (e.g., vLLM's newer V1 C++ architecture, TensorRT-LLM) explicitly avoiding Python-bound control loops on the critical path.
+
 ---
 
 # STAGE 4 — Optimization (Decision Contracts, Not Tips)
@@ -557,6 +560,8 @@ Every optimization below carries a **decision contract**: precondition (measured
 
 ## 4.1 Production vLLM config template
 
+**Node-Level Hardware Determinism:** Before launching the engine, you must guarantee deterministic hardware availability. An 8-GPU Tensor Parallel group is only as fast as its hottest, most restricted chip. At MAANG scale, **lock application clocks** (`nvidia-smi -lgc <target_freq>`) to prevent dynamic thermal throttling from destabilizing `TPOT` across the fleet.
+
 ```bash
 # Comments above flags — backslash must be the last character on a continued line.
 # TP across an NVLink pair:
@@ -567,7 +572,9 @@ Every optimization below carries a **decision contract**: precondition (measured
 #   --max-model-len 16384
 # Chunked-prefill token budget: raise = throughput, lower = better ITL:
 #   --max-num-batched-tokens 8192
-vllm serve meta-llama/Llama-3.1-70B-Instruct \
+# MAANG-scale NUMA Pinning: Launching kernels from the wrong CPU socket across the UPI/QPI link ruins tail latency.
+# MUST bind the engine to the CPU socket matching the GPU's PCIe switch and NIC via numactl.
+numactl --cpunodebind=0 --membind=0 vllm serve meta-llama/Llama-3.1-70B-Instruct \
   --tensor-parallel-size 2 \
   --dtype bfloat16 \
   --quantization fp8 \
@@ -641,8 +648,8 @@ EAGLE-3 paper reports ~3–6.5× over autoregressive at low batch **[Cited: Li e
 1. `--max-model-len` capped to real product need (cheapest win)
 2. `--kv-cache-dtype fp8` (eval-gated)
 3. Prefix caching (vLLM) / RadixAttention (SGLang default) — then **split TTFT SLOs** (§2.5) and decide the multi-tenant cache policy (§6.2: shared prefixes are a chargeback and isolation question, not just a perf feature)
-4. CPU/NVMe offload + cross-instance reuse: **LMCache** (connector names/roles are version-sensitive)
-5. Cluster KV pooling: **Mooncake** / **NIXL** (§5.7)
+4. CPU/NVMe offload + cross-instance reuse: **LMCache** (connector names/roles are version-sensitive). **MAANG-scale GDS Rule:** Bouncing weights or disaggregated KV cache through the CPU is unacceptable at scale. You must mandate **GPU-Direct Storage (GDS / `libcufile`)** to enable direct PCIe-to-GPU pathways for NVMe KV-cache swapping.
+5. Cluster KV pooling: **Mooncake** / **NIXL** (§5.7). For cross-node or SSD offload, you must use heavily pipelined, asynchronous CUDA streams (e.g. overlapping `cudaMemcpyAsync` with the next prefill chunk) so transfer times do not block the active generation stream.
 
 ## 4.5 Hardware decision table (inputs first, labels removed)
 
@@ -818,7 +825,10 @@ spec:
     ports: [{ port: 8000 }]
 ```
 
-**GPU-fault detection is a platform component, not a probe.** The wedged-CUDA-context problem (HTTP 200 while the GPU is dead) is solved by a **DCGM/XID watcher**: alert + automated cordon/drain on `DCGM_FI_DEV_XID_ERRORS > 0` (NVIDIA's GPU operator health checks, or a DaemonSet watching XID events). The startup probe proves the context once; the watcher catches it dying later — without generating synthetic load every minute on every pod.
+**Granular GPU-Fault Detection (XID Handling) is a platform component, not a probe.** The wedged-CUDA-context problem (HTTP 200 while the GPU is dead) is solved by a **DCGM/XID watcher**. At MAANG scale, cordoning nodes on *any* XID error is too blunt. You must split XID watcher logic into tiers:
+1. **Recoverable Faults (e.g., XID 13, 31 - memory page fault / user-space crash):** Unmap the process and restart the engine container (avoids a full node cordon and a 15-minute K8s rescheduling cycle).
+2. **Fatal Faults (e.g., XID 79, 94 - fallen off bus, uncontained ECC):** Cordon the node, taint, and drain `DCGM_FI_DEV_XID_ERRORS`.
+The startup probe proves the context once; the watcher catches it dying later — without generating synthetic load every minute on every pod.
 
 **Model-cache strategy — RWX is one option, not the default.** RWX PVCs require a compatible storage class (NFS/CephFS/Filestore) many GPU clusters lack. Alternatives, in rough order of preference: **(a)** bake/pull model as an **OCI artifact** (KServe model-cache, ORAS) — immutable, signed (§6.9), CDN-able; **(b)** per-node **hostPath cache pre-warmed by a DaemonSet** — fastest cold start, node-local; **(c)** RWO PVC per replica — simple, duplicates storage; **(d)** RWX shared cache — convenient where the storage class exists. Choose per cluster; the manifest's PVC is a placeholder for that decision.
 
@@ -871,12 +881,17 @@ nvidia-smi topo -m
 
 # 2. NCCL all-reduce busbw across the intended TP/PP group
 git clone https://github.com/NVIDIA/nccl-tests && cd nccl-tests && make
+# Macro-payload test (Prefill/Weights):
 ./build/all_reduce_perf -b 1G -e 8G -f 2 -g 8
+# MAANG-scale Micro-payload test (Decode): TP all-reduce payloads for single tokens are tiny. Wait times here destroy TPOT.
+./build/all_reduce_perf -b 8 -e 2M -f 2 -g 8
+# ENFORCE fast decode protocols in your engine environment: NCCL_ALGO=Tree and NCCL_PROTO=Simple (or LL128)
 # GATE: busbw ≥ ~80% of the topology's theoretical (e.g., NVSwitch HGX H100 ≈ 450+ GB/s
 # busbw expected). If you're at 50%, STOP and debug topology before benchmarking the engine.
 
 # 3. Multi-node: verify rail alignment and RDMA
 #    NCCL_IB_HCA pinned to the correct HCAs; GPUDirect RDMA active (no host bounce)
+#    MAANG-scale requirement: Mandate InfiniBand Adaptive Routing (AR) and SHARP in the fabric to prevent single-link drops (Go-Back-N retransmits) from stalling the pipeline (straggler detection).
 NCCL_DEBUG=INFO NCCL_IB_HCA=mlx5_0,mlx5_1 ./build/all_reduce_perf -b 1G -e 8G -g 16
 # Inspect NCCL_DEBUG output: "via NET/IB/GDRDMA" good; "via NET/Socket" = silent death.
 
@@ -914,7 +929,7 @@ spec:
 ```
 Note the model URI: **private OCI registry with a signed tag** (§6.9) — not a runtime pull from the public internet.
 
-**Gateway API Inference Extension / Endpoint Picker (EPP):** routes on a scoring function over live signals — KV-cache utilization, queue depth, LoRA-adapter locality, prefix-cache affinity — plus request **criticality** (Critical vs Sheddable; sheddable dropped under saturation). This is the production replacement for the round-robin logic in §1.3, and the enforcement point for §6.1 priorities. Behavior depends on the gateway/EPP implementation — verify against your pinned release.
+**Gateway API Inference Extension / Endpoint Picker (EPP):** routes on a scoring function over live signals — KV-cache utilization, queue depth, LoRA-adapter locality, prefix-cache affinity — plus request **criticality** (Critical vs Sheddable; sheddable dropped under saturation). This is the production replacement for the round-robin logic in §1.3, and the enforcement point for §6.1 priorities. Behavior depends on the gateway/EPP implementation — verify against your pinned release. **MAANG-scale KV Routing:** Polling an EPP via Gateway API is too slow for dynamic prefix states at scale. Use an **inverted index (DHT like Redis)** populated directly by the engine's block manager. The gateway must map request prompt sequences to physical node/GPU block addresses in real-time, achieving 90%+ prefix hit rates.
 
 **Ray Serve** (API evolves — verify): choose it for many-model fleets, fractional/heterogeneous GPU packing, and Python-level composition; choose KServe/llm-d for K8s-native CRDs + gateway integration; KubeRay gives both.
 
@@ -1001,7 +1016,7 @@ vllm serve meta-llama/Llama-3.1-70B-Instruct \
   --max-lora-rank 64 \
   --lora-modules tenant-a=/adapters/tenant-a tenant-b=/adapters/tenant-b
 ```
-Design points: adapter **hot-swap cost** (host→device copy on activation — keep hot adapters resident, LRU-evict cold); **rank-mix fragmentation**: multiplexing adapters of different ranks (e.g., rank-16 and rank-64 in one engine) fragments the adapter VRAM pool and disrupts continuous-batching efficiency — standardize ranks per pool where possible, or segregate by rank tier; **adapter-aware routing** (Inference Extension LoRA locality: route tenant-a to replicas already holding the adapter); per-tenant adapter isolation (an adapter is tenant data — registry + signing per §6.9); eval-gate adapters like models (§6.10).
+Design points: **MAANG-scale Adapter-Aware Batching**: adapter **hot-swap cost** (host→device copy on activation) incurs immense PCIe bandwidth penalties. Continuously paging 1GB LoRA weights in and out from host memory to GPU VRAM for interleaved requests tanks goodput. You must mandate **batching by LoRA ID** (automatically stalling a tenant's request for a few milliseconds to accrue a batch for that specific adapter) to amortize the PCIe transfer cost. Additionally: keep hot adapters resident, LRU-evict cold; manage **rank-mix fragmentation** (multiplexing rank-16 and rank-64 in one engine fragments the adapter VRAM pool and disrupts continuous-batching efficiency — standardize ranks per pool); enforce **adapter-aware routing** (Inference Extension LoRA locality: route tenant-A to replicas already holding the adapter); ensure per-tenant adapter isolation; and eval-gate adapters like models (§6.10).
 
 ## 6.4 Structured output & agentic serving (owner: runtime + gateway)
 
@@ -1091,7 +1106,7 @@ Severity matrix (SEV1 = Critical-tenant SLO breach or fleet-wide goodput collaps
 | Preemptions / KV evictions / recompute events > 0 | KV exhaustion | brownout ladder §6.5; reduce `max-model-len`/`max-num-seqs`. (vLLM V1 note: `num_requests_swapped`/`cpu_cache_usage_perc` are legacy swap-era metrics — rely on preemption/recompute counters unless your pinned profile still exposes swap) |
 | OOM on spike | over-committed budget | recompute §2.1 with headroom; lower `gpu-memory-utilization` |
 | Throughput collapse post-deploy | quant/spec-decode regression | auto-rollback; check α and eval deltas |
-| XID / ECC errors | GPU hardware fault | cordon + drain; `dcgmi diag -r 2`; compare busbw to §5.4 baseline |
+| XID / ECC errors | GPU hardware fault | Evaluate XID Tier: Restart container (13, 31) OR Cordon + drain (79, 94); `dcgmi diag -r 2`; compare busbw to §5.4 baseline |
 | NCCL hang in TP/PP group | fabric or peer failure | whole parallel group is the failure domain — restart group, fail over to spare; check rail health |
 
 ## 6.12 Safety & guardrail serving path (owner: gateway + safety)
