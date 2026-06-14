@@ -1,0 +1,9 @@
+# Appendix C — Co-Hosting Boundary: Embeddings, Rerankers, Multimodal
+
+These workloads share clusters with LLM serving but break several assumptions this playbook makes; this appendix marks where the model changes rather than fully designing it.
+
+**Embeddings & rerankers.** Tiny models, no decode phase, no KV cache — pure batched prefill-like compute with millisecond budgets. Implications: (a) **don't co-locate them on LLM decode GPUs** — their bursty compute spikes interfere with TPOT, and they pack well onto fractional/MIG slices or L4-class GPUs instead; (b) the §2 metrics model collapses to latency + QPS (no TTFT/TPOT split, no goodput-knee asymmetry); (c) in RAG pipelines they sit *upstream* on the request path, so their P99 adds directly to the user-perceived TTFT budget — allocate it explicitly in the SLO. Serve via the same gateway and admission layer (cheap per-request but high-QPS, so request-rate quotas matter more than token budgets).
+
+**Multimodal (vision-language, audio).** Breaks the capacity math in three places: (a) the **encoder** (ViT/audio) adds a per-request compute stage before prefill whose cost scales with media size, not token count — admission budgets must count media units, not just tokens; (b) image tokens inflate effective context (hundreds to thousands of tokens per image), so the §2.1 KV arithmetic needs the *post-projection* token count, which is model-specific; (c) media payloads inflate request size limits, gateway buffering, and audit-log policy (media retention is a separate compliance decision from text). Engine multimodal paths are newer and more version-volatile than text serving — pin and validate per profile with extra suspicion.
+
+Full treatment of both — encoder pool sizing, media-aware admission, multimodal eval gates — is a candidate companion alongside the MoE topology document.

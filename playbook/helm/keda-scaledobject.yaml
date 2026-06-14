@@ -1,0 +1,14 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata: { name: vllm-scaler }
+spec:
+  scaleTargetRef: { name: vllm-llama70b }
+  minReplicaCount: 2
+  maxReplicaCount: 12
+  cooldownPeriod: 600
+  triggers:
+  - type: prometheus
+    metadata:
+      serverAddress: http://prometheus:9090
+      query: sum(vllm:num_requests_waiting{app="vllm-llama70b"}) / count(vllm:num_requests_waiting{app="vllm-llama70b"})
+      threshold: "6"

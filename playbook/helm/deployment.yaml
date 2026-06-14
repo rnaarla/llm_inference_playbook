@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-llama70b
+  labels: { app: vllm-llama70b }
+  annotations: { platform/profile: h100-vllm-kserve }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: vllm-llama70b } }
+  template:
+    metadata:
+      labels: { app: vllm-llama70b }
+      annotations: { prometheus.io/scrape: "true", prometheus.io/port: "8000" }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+      - name: vllm
+        image: vllm/vllm-openai:vX.Y.Z
+        args: ["--model","meta-llama/Llama-3.1-70B-Instruct",
+               "--tensor-parallel-size","2","--quantization","fp8",
+               "--kv-cache-dtype","fp8","--max-model-len","16384",
+               "--enable-prefix-caching","--enable-chunked-prefill"]
+        env:
+        - name: HF_HOME
+          value: /models/hf-cache
+        - name: HF_TOKEN
+          valueFrom: { secretKeyRef: { name: hf-token, key: token } }
+        resources: { limits: { nvidia.com/gpu: 2 } }
+        ports: [{ containerPort: 8000 }]
+        startupProbe:
+          exec:
+            command: ["sh","-c",
+              "curl -sf -m 30 http://localhost:8000/v1/chat/completions -H 'Content-Type: application/json' -d '{\"model\":\"meta-llama/Llama-3.1-70B-Instruct\",\"messages\":[{\"role\":\"user\",\"content\":\"ping\"}],\"max_tokens\":1}' | python3 -c 'import sys,json; r=json.load(sys.stdin); assert r[\"choices\"][0][\"message\"] is not None'"]
+          periodSeconds: 15
+          failureThreshold: 60
+        readinessProbe:
+          httpGet: { path: /health, port: 8000 }
+          periodSeconds: 10
+        livenessProbe:
+          httpGet: { path: /health, port: 8000 }
+          periodSeconds: 30
+          failureThreshold: 5
+        volumeMounts: [{ name: model-cache, mountPath: /models/hf-cache }]
+        lifecycle:
+          preStop: { exec: { command: ["sh","-c","sleep 30"] } }
+      terminationGracePeriodSeconds: 180
+      volumes:
+      - name: model-cache
+        persistentVolumeClaim: { claimName: hf-cache }
+      nodeSelector: { nvidia.com/gpu.product: NVIDIA-H100-80GB-HBM3 }
+      tolerations:
+      - { key: nvidia.com/gpu, operator: Exists, effect: NoSchedule }
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: topology.kubernetes.io/zone
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector: { matchLabels: { app: vllm-llama70b } }

@@ -1,0 +1,16 @@
+# versions.lock — one entry per validated profile. NO artifact ships against an unfilled profile.
+profiles:
+  - profile: h100-vllm-kserve          # canonical serving profile
+    vllm: ""                            # flags, metric names, --speculative-config schema shift by release
+    cuda: ""
+    nvidia_driver: ""
+    nccl: ""
+    kubernetes: ""
+    kserve: ""                          # LLMInferenceService CRD shape has churned
+    gateway_api_inference_extension: ""
+    dcgm_exporter: ""
+    validated_on: ""                    # date the smoke + bench suite (§0.2) last passed
+    validated_by: ""
+  - profile: sglang-structured          # add per-workload profiles as adopted
+    sglang: ""
+    validated_on: ""

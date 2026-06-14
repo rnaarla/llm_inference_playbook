@@ -1,0 +1,26 @@
+# Canonical benchmark report — every bench-local run emits this (§2.5).
+benchmark_report:
+  profile: h100-vllm-kserve            # §0.1 profile this ran against
+  model: ""                            # exact revision/quantization
+  hardware: ""                         # GPU SKU × count, interconnect class
+  traffic:
+    source: ""                         # production trace | synthetic (state which)
+    prompt_tokens:  { p50: 0, p95: 0, p99: 0 }
+    output_tokens:  { p50: 0, p95: 0, p99: 0 }
+    cache_hit_rate: 0.0
+    structured_output_fraction: 0.0
+  results:
+    ttft_ms:  { p50: 0, p95: 0, p99: 0, hit_p95: 0, miss_p95: 0 }
+    tpot_ms:  { p50: 0, p95: 0, p99: 0 }
+    e2e_s:    { p50: 0, p95: 0, p99: 0 }
+    goodput_knee: { concurrency: 0, output_tok_s: 0, input_tok_s: 0 }
+    queue_wait_ms_p95: 0
+    preemptions: 0
+    kv_usage_peak: 0.0
+    dram_active_mean: 0.0
+  decisions:                           # the numbers this report justifies
+    per_replica_concurrency_cap: 0
+    replica_count: 0                   # via §5.3 Little's Law derivation
+    keda_queue_threshold: 0
+    cost_per_1M: { input: 0.0, output: 0.0, total: 0.0 }   # §6.7
+  run: { warmup_min: 10, steady_min: 30, date: "", operator: "" }

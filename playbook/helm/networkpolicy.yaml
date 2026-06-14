@@ -1,0 +1,11 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: vllm-llama70b-ingress }
+spec:
+  podSelector: { matchLabels: { app: vllm-llama70b } }
+  policyTypes: [Ingress]
+  ingress:
+  - from:
+    - podSelector: { matchLabels: { role: inference-gateway } }
+    - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: monitoring } }
+    ports: [{ port: 8000 }]
