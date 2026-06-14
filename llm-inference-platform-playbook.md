@@ -391,6 +391,20 @@ rate(vllm:prefix_cache_hits[5m]) / rate(vllm:prefix_cache_queries[5m])
 DCGM_FI_PROF_DRAM_ACTIVE
 ```
 
+**Per-tenant slices (requires gateway-stamped labels from §6.1):** add `tenant` (and optionally `priority_class`) on request metrics at ingress, then propagate through queue/shed/fairness paths; keep label cardinality bounded (cap tenant set for dashboards and bucket long-tail into `other`) to keep observability overhead manageable.
+```promql
+# Engine/gateway metric names here are profile-pinned examples; adapt to your deployed stack.
+# Per-tenant TTFT P95 (requires tenant label stamped at the gateway, §6.1)
+# Example engine metric name (`vllm:*`) shown with the required histogram **bucket** suffix (`*_bucket`); replace only the metric prefix/name for your engine.
+histogram_quantile(0.95, sum by (tenant, le) (rate(vllm:time_to_first_token_seconds_bucket[5m])))
+# Per-tenant queue pressure and shed rate (gateway metric names are examples; adapt to your deployed gateway)
+sum by (tenant) (rate(gateway_requests_total{outcome="queued"}[5m]))
+sum by (tenant) (rate(gateway_requests_total{outcome="shed_429"}[5m]))
+# Fairness-debt divergence across tenants (ties to §6.2 weighted fair queueing)
+max(tenant_fairness_debt) - min(tenant_fairness_debt)
+```
+Tie these panels to §6.2 fairness signals and §6.7 token-cost attribution so per-tenant latency and chargeback stop hiding in fleet averages; as above, metric names are profile-pinned and must be adapted to your pinned gateway/engine profile.
+
 **Alert starter set:** TTFT P95 > SLO 5m; `waiting > 2×running` 5m (queue-bound); `kv_cache_usage_perc > 0.92` (preemption imminent — triggers brownout ladder §6.5); `DCGM_FI_DEV_XID_ERRORS > 0` (GPU fault — drain node, §5.2 probes). Add OpenTelemetry tracing gateway→engine to attribute latency between queue wait and prefill.
 
 ## 2.5 Benchmarking methodology (protocol, not vibes)
@@ -1056,6 +1070,12 @@ Request/response **audit schema**: timestamp, `X-Request-ID`, tenant, model+revi
 
 Pipeline: **private OCI registry** (ORAS/registry-native model artifacts) → **sign** (sigstore/cosign) → **scan** (pickle/code-exec scanning for non-safetensors; CVE scan on serving images) → **model card** with provenance, license, eval results stored alongside the artifact → **promotion pipeline** dev→staging→prod gated on §6.10 evals. Runtime pulls **only** signed tags from the internal registry; admission of an unsigned artifact is a build-time failure, not a runtime discovery.
 
+Extend this to **load-time verification**: an init container/sidecar runs `cosign verify` and digest-pin checks before `vllm serve` starts, so a tampered/swapped local checkpoint is rejected at startup. Digest pinning here means comparing the pulled artifact's content digest (for example, SHA256) to the approved digest recorded in release metadata. Keep approved digests in a trusted control-plane source (for example, signed promotion metadata or a locked deployment config) that the init path can read but not mutate. If the digest source or verification path is unavailable, the pod fails readiness (fail closed) and does not serve unverified weights.
+
+Generate and retain an SBOM for the serving image (and ideally the model artifact bundle) so CVE response can answer "which deployments contain component X" without a fleet scrape. Attach SLSA provenance attestations to model artifacts and verify those attestations in the §6.10 promotion gate so promoted artifacts are traceable to their build inputs.
+
+Validation hook (§0.2 style): `test-unsigned-checkpoint` injects a bad/missing signature and asserts readiness stays false and no traffic is admitted.
+
 ## 6.10 Eval gates & release engineering (owner: platform + quality)
 
 CI artifact, not a one-liner: every model/quant/adapter/engine-version change runs the gate — lm-eval baseline (GSM8K, MMLU, IFEval) + long-context (RULER) + tool-calling (BFCL) + domain corpus + **sampled production-traffic replay** — and **blocks promotion** on regression beyond the per-metric error budget. Canary rollout 5%→50%→100% gated on **goodput and quality signals** (structured-output validity rate, tool-call success rate), with automated rollback. A quantized canary whose BFCL drops 5 points rolls back without a human in the loop.
@@ -1073,6 +1093,18 @@ Severity matrix (SEV1 = Critical-tenant SLO breach or fleet-wide goodput collaps
 | Throughput collapse post-deploy | quant/spec-decode regression | auto-rollback; check α and eval deltas |
 | XID / ECC errors | GPU hardware fault | cordon + drain; `dcgmi diag -r 2`; compare busbw to §5.4 baseline |
 | NCCL hang in TP/PP group | fabric or peer failure | whole parallel group is the failure domain — restart group, fail over to spare; check rail health |
+
+## 6.12 Safety & guardrail serving path (owner: gateway + safety)
+
+Mechanism: insert guardrails in the serving path, not just policy docs. Input moderation and prompt-injection screening run at the gateway **after** auth/admission (§6.1) and **before** engine dispatch, and output moderation runs on the generated stream per the lifecycle/contract in §1.1 and §1.3. Guardrail components can use dedicated safety models and frameworks (examples: Llama Guard, ShieldGemma, NeMo Guardrails) for input/output policy checks, including PII detection/redaction. §6.8 remains the logging/audit-policy layer, while this section is the online enforcement layer.
+
+Failure mode: guardrails are an extra forward pass in the critical path, so they spend TTFT/E2E budget (§1.1, §2.5). Mitigate with a small shared guardrail pool, batching, or overlapping input screening with tokenization/queueing so part of the safety compute is hidden under work already on the critical path; however, engine dispatch remains blocked until input screening resolves, and late rejects must trigger immediate cancellation/cleanup. For streaming output moderation, inspect rolling token/chunk windows during generation (not only at full completion) so first token delivery is preserved; the trade-off is earlier delivery versus a late-stream violation that still requires termination.
+
+Policy decision (per-route, explicit, and reviewed like §6.1 fail-static admission): safety-required routes fail-closed on guardrail timeout/outage (safe refusal). Lower-risk routes may fail-open with mandatory logging/escalation, and this asymmetry is explicit — when a safety-required route fails open, classify it as a safety incident, not only availability debt.
+
+Streaming cutoff semantics: if output moderation flags mid-stream, gateway emits a terminal `policy_violation` refusal/error event with a consistent 4xx policy status mapping, stops downstream bytes, and triggers cancellation on the engine path (§1.3/§6.1 abort path) to avoid unnecessary decoding compute.
+
+Validation target/runbook hook: dashboard per-route block rate, guardrail latency P95, and fail-open/fail-closed counters; add `test-guardrail-down` (§0.2) that hard-fails the guardrail dependency and asserts safety-required routes fail-closed while non-critical routes fail-open with audit logs, and eval-gate guardrail model updates alongside other model changes (§6.10).
 
 ---
 
