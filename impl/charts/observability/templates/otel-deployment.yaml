@@ -1,0 +1,65 @@
+{{- if .Values.otel.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "inference-observability.otelName" . }}
+  labels:
+    {{- include "inference-observability.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.otel.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "inference-observability.otelName" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "inference-observability.otelName" . }}
+        {{- include "inference-observability.labels" . | nindent 8 }}
+        {{- with .Values.otel.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "inference-observability.otelName" . }}
+      containers:
+        - name: otel-collector
+          image: "{{ .Values.otel.image.repository }}:{{ .Values.otel.image.tag }}"
+          imagePullPolicy: {{ .Values.otel.image.pullPolicy }}
+          args:
+            - --config=/conf/collector.yaml
+          env:
+            - name: OTEL_SERVICE_NAMESPACE
+              value: {{ .Values.otel.serviceNamespace | quote }}
+            - name: OTLP_ENDPOINT
+              value: {{ .Values.otel.otlpEndpoint | quote }}
+            - name: OTLP_TLS_INSECURE
+              value: {{ .Values.otel.tlsInsecure | quote }}
+            - name: OTEL_MEMORY_LIMIT_MIB
+              value: {{ .Values.otel.memoryLimitMiB | quote }}
+          ports:
+            - name: otlp-grpc
+              containerPort: {{ .Values.otel.service.grpcPort }}
+            - name: otlp-http
+              containerPort: {{ .Values.otel.service.httpPort }}
+          volumeMounts:
+            - name: config
+              mountPath: /conf
+              readOnly: true
+          resources:
+            {{- toYaml .Values.otel.resources | nindent 12 }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "inference-observability.otelName" . }}-config
+      {{- with .Values.otel.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.otel.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.otel.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

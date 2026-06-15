@@ -1,0 +1,104 @@
+{
+  "uid": "inference-platform",
+  "title": "LLM Inference Platform",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "tags": [
+    "llm",
+    "inference"
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "tenant",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${DS_PROMETHEUS}"
+        },
+        "query": "label_values(gateway_requests_total, tenant)",
+        "refresh": 1,
+        "includeAll": true,
+        "multi": true
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "TTFT P95",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(vllm:time_to_first_token_seconds_bucket[5m])))"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "TPOT / ITL P95",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(vllm:inter_token_latency_seconds_bucket[5m])))"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Queue Depth",
+      "targets": [
+        {
+          "expr": "sum(vllm:num_requests_waiting)"
+        },
+        {
+          "expr": "sum(vllm:num_requests_running)"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "KV Cache Usage",
+      "targets": [
+        {
+          "expr": "max(vllm:kv_cache_usage_perc)"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Per-Tenant TTFT P95",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (tenant, le) (rate(vllm:time_to_first_token_seconds_bucket{tenant=~\"$tenant\"}[5m])))"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Per-Tenant Shed Rate",
+      "targets": [
+        {
+          "expr": "sum by (tenant) (rate(gateway_requests_total{tenant=~\"$tenant\",outcome=\"shed_429\"}[5m]))"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Fairness Debt Spread",
+      "targets": [
+        {
+          "expr": "max(tenant_fairness_debt) - min(tenant_fairness_debt)"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "GPU XID Errors",
+      "targets": [
+        {
+          "expr": "sum by (gpu, UUID) (increase(DCGM_FI_DEV_XID_ERRORS[5m]))"
+        }
+      ]
+    }
+  ]
+}

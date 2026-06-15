@@ -2,6 +2,12 @@
 
 *Document teaches; [`playbook/`](playbook/) proves. Every artifact must pass the profile contract (§0.1) against a filled [`versions.lock`](playbook/versions.lock) before use.*
 
+This repository is a **reference playbook plus environment-agnostic implementation scaffold** for production-oriented LLM inference platform engineering. It is **not a turnkey deployment**: bring your own GPU cluster, Gateway API controller, OCI registry, secrets, model artifacts, and observability stack.
+
+The implementation scaffold keeps all environment-specific values as placeholders or runtime configuration. See [`impl/config/README.md`](impl/config/README.md) and [`impl/DEPLOYMENT_AND_VALIDATION.md`](impl/DEPLOYMENT_AND_VALIDATION.md).
+
+License: Apache-2.0. See [`LICENSE`](LICENSE).
+
 ## Start here — persona paths
 
 | Persona | Path |
@@ -25,6 +31,7 @@
 | Brownout response | [§6.5](docs/05-platform-engineering.md#65-degradation-modes--brownout-ladder-owner-sre--scheduler) | runbooks | `test-brownout` |
 | Fabric validation | [§5.4](docs/04-scale-and-kubernetes.md#54-fabric--topology-validation-gate-dont-hope) | nccl-tests | — |
 | Model promotion | [§6.10](docs/05-platform-engineering.md#610-eval-gates--release-engineering-owner-platform--quality) | ci/ | `test-rollback` |
+| Implementation architecture | [Design choices](docs/design-choices.md) | `impl/` | `make -C playbook offline` |
 
 ## Table of contents
 
@@ -35,6 +42,14 @@
 | [03-optimization-decisions.md](docs/03-optimization-decisions.md) | §4 optimization decision contracts |
 | [04-scale-and-kubernetes.md](docs/04-scale-and-kubernetes.md) | §5 K8s, fabric, disaggregation |
 | [05-platform-engineering.md](docs/05-platform-engineering.md) | §6 platform (6.A–6.E) |
+| [design-choices.md](docs/design-choices.md) | Implementation design choice register |
+| [setup.md](docs/setup.md) | Offline setup and quickstart |
+| [architecture.md](docs/architecture.md) | Repository and platform architecture overview |
+| [status.md](docs/status.md) | Scaffold/proof maturity matrix |
+| [tooling.md](docs/tooling.md) | Required and optional tooling |
+| [compatibility.md](docs/compatibility.md) | Target pins vs validated evidence |
+| [impl/config/README.md](impl/config/README.md) | Environment placeholder and configuration reference |
+| [impl/DEPLOYMENT_AND_VALIDATION.md](impl/DEPLOYMENT_AND_VALIDATION.md) | What config solves vs what requires live infrastructure proof |
 | [F-engine-internals.md](docs/appendices/F-engine-internals.md) | §3.1–3.4 deep dive |
 | [G-scale-tier-requirements.md](docs/appendices/G-scale-tier-requirements.md) | [T2] hyperscale requirements |
 | [B-claims-register.md](docs/appendices/B-claims-register.md) | Claims worklist |

@@ -1,0 +1,18 @@
+nameOverride: REPLACE_WITH_PREFILL_POOL_DEPLOYMENT
+profile: REPLACE_WITH_DISAGG_PROFILE_NAME
+
+engine:
+  args:
+    kvTransferConfig:
+      kv_connector: REPLACE_WITH_KV_TRANSFER_CONNECTOR
+      kv_role: kv_producer
+      kv_endpoint: REPLACE_WITH_PREFILL_KV_ENDPOINT
+      kv_transfer_timeout_ms: REPLACE_WITH_KV_TRANSFER_TIMEOUT_MS
+
+routing:
+  phase: prefill
+  fallbackPool: REPLACE_WITH_MONOLITHIC_FALLBACK_POOL
+  decodePool: REPLACE_WITH_DECODE_POOL_SERVICE
+
+nodeSelector:
+  REPLACE_WITH_GPU_NODE_SELECTOR_KEY: REPLACE_WITH_GPU_NODE_SELECTOR_VALUE

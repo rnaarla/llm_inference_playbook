@@ -1,0 +1,25 @@
+defaults:
+  max_input_tokens: 4096
+  max_output_tokens: 1024
+  rpm: 120
+  tpm: 250000
+  priority_class: Standard
+
+models:
+  REPLACE_WITH_MODEL_ALIAS:
+    served_name: REPLACE_WITH_SERVED_MODEL_NAME
+    max_context_tokens: 0
+
+tenants:
+  REPLACE_WITH_CRITICAL_TENANT_ID:
+    priority_class: Critical
+    rpm: 0
+    tpm: 0
+    max_input_tokens: 0
+    max_output_tokens: 0
+  REPLACE_WITH_STANDARD_TENANT_ID:
+    priority_class: Standard
+  REPLACE_WITH_SHEDDABLE_TENANT_ID:
+    priority_class: Sheddable
+    rpm: 0
+    tpm: 0

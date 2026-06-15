@@ -1,0 +1,14 @@
+{{- if .Values.dashboard.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "inference-observability.name" . }}-dashboard
+  labels:
+    {{- include "inference-observability.labels" . | nindent 4 }}
+    {{- toYaml .Values.dashboard.labels | nindent 4 }}
+  annotations:
+    grafana_folder: {{ .Values.dashboard.folder | quote }}
+data:
+  inference-platform.json: |-
+{{ .Files.Get "dashboards/inference-platform.json" | indent 4 }}
+{{- end }}

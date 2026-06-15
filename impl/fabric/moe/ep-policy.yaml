@@ -1,0 +1,20 @@
+expert_parallelism:
+  profile: REPLACE_WITH_FRONTIER_PROFILE_NAME
+  placement:
+    dense_layers: tp_within_nvlink_domain
+    experts: ep_within_node_first
+    cross_node_ep: requires_ib_gdrdma
+    topology_class: REPLACE_WITH_FABRIC_TOPOLOGY_CLASS
+    expert_parallel_size: REPLACE_WITH_EXPERT_PARALLEL_SIZE
+  monitoring:
+    metrics:
+      - expert_tokens_total
+      - expert_dispatch_latency_seconds
+      - expert_combine_latency_seconds
+      - expert_imbalance_ratio
+  gates:
+    max_expert_imbalance_ratio: REPLACE_WITH_MAX_EXPERT_IMBALANCE_RATIO
+    fabric_busbw_min_fraction_theoretical: REPLACE_WITH_FABRIC_BUSBW_MIN_FRACTION
+  routing:
+    hot_expert_policy: REPLACE_WITH_HOT_EXPERT_POLICY
+    fallback_pool: REPLACE_WITH_MOE_FALLBACK_POOL

@@ -124,7 +124,7 @@ apiVersion: serving.kserve.io/v1alpha1
 kind: LLMInferenceService
 metadata: { name: llama70b }
 spec:
-  model: { uri: "oci://registry.internal/models/llama-3.1-70b-fp8:SIGNED_TAG", name: llama-70b }
+  model: { uri: "oci://<registry-host>/models/llama-3.1-70b-fp8:<signed-tag>", name: llama-70b }
   replicas: 2
   router: { route: {}, gateway: {}, scheduler: {} }
 ```

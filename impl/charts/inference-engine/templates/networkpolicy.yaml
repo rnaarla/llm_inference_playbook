@@ -1,0 +1,21 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "inference-engine.name" . }}-ingress
+spec:
+  podSelector:
+    matchLabels:
+      app: {{ include "inference-engine.name" . }}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.gatewayLabel | nindent 14 }}
+        - namespaceSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.monitoringNamespaceLabel | nindent 14 }}
+      ports:
+        - port: {{ .Values.service.port }}
+{{- end }}

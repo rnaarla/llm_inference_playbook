@@ -1,0 +1,91 @@
+nameOverride: REPLACE_WITH_ENGINE_DEPLOYMENT
+profile: REPLACE_WITH_PROFILE_NAME
+
+replicaCount: 0
+
+image:
+  repository: REPLACE_WITH_VLLM_IMAGE_REPOSITORY
+  tag: REPLACE_WITH_VLLM_IMAGE_TAG
+  pullPolicy: IfNotPresent
+
+model:
+  name: REPLACE_WITH_MODEL_ALIAS
+  servedName: REPLACE_WITH_SERVED_MODEL_NAME
+  artifact: oci://REPLACE_WITH_REGISTRY_HOST/models/REPLACE_WITH_MODEL:REPLACE_WITH_TAG
+  cachePath: /models/hf-cache
+
+engine:
+  args:
+    tensorParallelSize: 0
+    dtype: REPLACE_WITH_DTYPE
+    quantization: REPLACE_WITH_QUANTIZATION
+    kvCacheDtype: REPLACE_WITH_KV_CACHE_DTYPE
+    maxModelLen: 0
+    maxNumSeqs: 0
+    maxNumBatchedTokens: 0
+    enablePrefixCaching: false
+    enableChunkedPrefill: false
+    maxLoras: 0
+    maxLoraRank: 0
+    gpuMemoryUtilization: "REPLACE_WITH_GPU_MEMORY_UTILIZATION"
+
+modelPuller:
+  image: ghcr.io/oras-project/oras:v1.2.2
+  verifyImage: ghcr.io/sigstore/cosign/cosign:v2.4.1
+  enabled: true
+  verification:
+    enabled: true
+    failClosed: true
+    publicKeyMountPath: /cosign/cosign.pub
+    approvedDigest: REPLACE_WITH_APPROVED_MODEL_DIGEST
+    identityRegexp: ""
+    issuer: ""
+  cosignPublicKeySecret: REPLACE_WITH_COSIGN_PUBLIC_KEY_SECRET
+
+lora:
+  enabled: false
+  adapterRegistryConfigName: REPLACE_WITH_LORA_ADAPTER_REGISTRY_CONFIG
+  adapterRegistryMountPath: /etc/inference/adapters
+  adapterCachePath: /models/adapters
+  routing:
+    localityLabel: REPLACE_WITH_ADAPTER_LOCALITY_LABEL
+    batchByAdapterId: true
+  adapters: {}
+
+hfToken:
+  secretName: REPLACE_WITH_HF_TOKEN_SECRET
+  key: token
+
+service:
+  port: 8000
+
+resources:
+  limits:
+    nvidia.com/gpu: 0
+
+nodeSelector:
+  REPLACE_WITH_GPU_NODE_SELECTOR_KEY: REPLACE_WITH_GPU_NODE_SELECTOR_VALUE
+
+tolerations:
+  - key: nvidia.com/gpu
+    operator: Exists
+    effect: NoSchedule
+
+topologySpreadConstraints:
+  enabled: true
+  topologyKey: topology.kubernetes.io/zone
+
+keda:
+  enabled: true
+  minReplicaCount: 0
+  maxReplicaCount: 0
+  cooldownPeriod: 0
+  prometheusAddress: REPLACE_WITH_PROMETHEUS_SERVICE_URL
+  queueThreshold: "REPLACE_WITH_QUEUE_THRESHOLD"
+
+networkPolicy:
+  enabled: true
+  gatewayLabel:
+    role: REPLACE_WITH_GATEWAY_ROLE_LABEL
+  monitoringNamespaceLabel:
+    kubernetes.io/metadata.name: REPLACE_WITH_MONITORING_NAMESPACE

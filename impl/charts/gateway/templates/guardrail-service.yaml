@@ -1,0 +1,12 @@
+{{- if .Values.guardrails.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "inference-gateway.guardrailName" . }}
+spec:
+  selector:
+    app: {{ include "inference-gateway.guardrailName" . }}
+  ports:
+    - port: 8080
+      targetPort: 8080
+{{- end }}

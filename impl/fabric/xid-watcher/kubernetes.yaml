@@ -1,0 +1,139 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: REPLACE_WITH_XID_WATCHER_SERVICE_ACCOUNT
+  namespace: REPLACE_WITH_INFERENCE_NAMESPACE
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: REPLACE_WITH_XID_WATCHER_CLUSTER_ROLE
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch", "delete"]
+  - apiGroups: ["policy"]
+    resources: ["pods/eviction"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: REPLACE_WITH_XID_WATCHER_CLUSTER_ROLE_BINDING
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: REPLACE_WITH_XID_WATCHER_CLUSTER_ROLE
+subjects:
+  - kind: ServiceAccount
+    name: REPLACE_WITH_XID_WATCHER_SERVICE_ACCOUNT
+    namespace: REPLACE_WITH_INFERENCE_NAMESPACE
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: REPLACE_WITH_XID_WATCHER_CONFIG_NAME
+  namespace: REPLACE_WITH_INFERENCE_NAMESPACE
+data:
+  recoverableXids: "13,31"
+  fatalXids: "79,94"
+  pollIntervalSeconds: "10"
+  targetNamespace: REPLACE_WITH_INFERENCE_NAMESPACE
+  targetPodSelector: REPLACE_WITH_XID_TARGET_POD_SELECTOR
+  recoverableCommand: >-
+    kubectl delete pod -n ${TARGET_NAMESPACE} -l ${TARGET_POD_SELECTOR}
+    --field-selector spec.nodeName=${NODE_NAME} --wait=false
+  fatalCordonCommand: >-
+    kubectl cordon ${NODE_NAME}
+  fatalDrainCommand: >-
+    kubectl drain ${NODE_NAME} --ignore-daemonsets --delete-emptydir-data
+    --timeout=${XID_DRAIN_TIMEOUT}
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: REPLACE_WITH_XID_WATCHER_DAEMONSET
+  namespace: REPLACE_WITH_INFERENCE_NAMESPACE
+  labels:
+    app.kubernetes.io/name: xid-watcher
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: xid-watcher
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: xid-watcher
+    spec:
+      serviceAccountName: REPLACE_WITH_XID_WATCHER_SERVICE_ACCOUNT
+      nodeSelector:
+        REPLACE_WITH_GPU_NODE_SELECTOR_KEY: REPLACE_WITH_GPU_NODE_SELECTOR_VALUE
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: watcher
+          image: REPLACE_WITH_XID_WATCHER_IMAGE
+          imagePullPolicy: IfNotPresent
+          command: ["python3", "/opt/xid-watcher/watcher.py"]
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: XID_RECOVERABLE
+              valueFrom:
+                configMapKeyRef:
+                  name: REPLACE_WITH_XID_WATCHER_CONFIG_NAME
+                  key: recoverableXids
+            - name: XID_FATAL
+              valueFrom:
+                configMapKeyRef:
+                  name: REPLACE_WITH_XID_WATCHER_CONFIG_NAME
+                  key: fatalXids
+            - name: POLL_INTERVAL_SECONDS
+              valueFrom:
+                configMapKeyRef:
+                  name: REPLACE_WITH_XID_WATCHER_CONFIG_NAME
+                  key: pollIntervalSeconds
+            - name: TARGET_NAMESPACE
+              valueFrom:
+                configMapKeyRef:
+                  name: REPLACE_WITH_XID_WATCHER_CONFIG_NAME
+                  key: targetNamespace
+            - name: TARGET_POD_SELECTOR
+              valueFrom:
+                configMapKeyRef:
+                  name: REPLACE_WITH_XID_WATCHER_CONFIG_NAME
+                  key: targetPodSelector
+            - name: XID_DRAIN_TIMEOUT
+              value: REPLACE_WITH_XID_DRAIN_TIMEOUT
+            - name: XID_RECOVERABLE_CMD
+              valueFrom:
+                configMapKeyRef:
+                  name: REPLACE_WITH_XID_WATCHER_CONFIG_NAME
+                  key: recoverableCommand
+            - name: XID_FATAL_CORDON_CMD
+              valueFrom:
+                configMapKeyRef:
+                  name: REPLACE_WITH_XID_WATCHER_CONFIG_NAME
+                  key: fatalCordonCommand
+            - name: XID_FATAL_DRAIN_CMD
+              valueFrom:
+                configMapKeyRef:
+                  name: REPLACE_WITH_XID_WATCHER_CONFIG_NAME
+                  key: fatalDrainCommand
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi

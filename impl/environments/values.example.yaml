@@ -1,0 +1,175 @@
+# Example environment values consumed by impl/charts/*.
+# Replace every REPLACE_WITH_* value at deployment time from your environment
+# config, parameter store, or secret manager.
+
+global:
+  environmentName: REPLACE_WITH_ENVIRONMENT_NAME
+  namespace: REPLACE_WITH_INFERENCE_NAMESPACE
+  monitoringNamespace: REPLACE_WITH_MONITORING_NAMESPACE
+  region: REPLACE_WITH_REGION
+
+engine:
+  nameOverride: REPLACE_WITH_ENGINE_DEPLOYMENT
+  profile: REPLACE_WITH_PROFILE_NAME
+  replicaCount: REPLACE_WITH_ENGINE_REPLICA_COUNT
+  image:
+    repository: REPLACE_WITH_VLLM_IMAGE_REPOSITORY
+    tag: REPLACE_WITH_VLLM_IMAGE_TAG
+  model:
+    name: REPLACE_WITH_MODEL_ALIAS
+    servedName: REPLACE_WITH_SERVED_MODEL_NAME
+    artifact: oci://REPLACE_WITH_REGISTRY_HOST/models/REPLACE_WITH_MODEL@REPLACE_WITH_APPROVED_MODEL_DIGEST
+  modelPuller:
+    verification:
+      enabled: true
+      failClosed: true
+      approvedDigest: REPLACE_WITH_APPROVED_MODEL_DIGEST
+    cosignPublicKeySecret: REPLACE_WITH_COSIGN_PUBLIC_KEY_SECRET
+  lora:
+    enabled: false
+    adapterRegistryConfigName: REPLACE_WITH_LORA_ADAPTER_REGISTRY_CONFIG
+    adapters:
+      REPLACE_WITH_ADAPTER_ID: oci://REPLACE_WITH_REGISTRY_HOST/adapters/REPLACE_WITH_ADAPTER@REPLACE_WITH_APPROVED_ADAPTER_DIGEST
+    routing:
+      localityLabel: REPLACE_WITH_ADAPTER_LOCALITY_LABEL
+      batchByAdapterId: true
+  hfToken:
+    secretName: REPLACE_WITH_HF_TOKEN_SECRET
+  resources:
+    limits:
+      nvidia.com/gpu: REPLACE_WITH_GPU_COUNT
+  nodeSelector:
+    REPLACE_WITH_GPU_NODE_SELECTOR_KEY: REPLACE_WITH_GPU_NODE_SELECTOR_VALUE
+  keda:
+    prometheusAddress: REPLACE_WITH_PROMETHEUS_SERVICE_URL
+    minReplicaCount: REPLACE_WITH_MIN_REPLICAS
+    maxReplicaCount: REPLACE_WITH_MAX_REPLICAS
+    queueThreshold: "REPLACE_WITH_QUEUE_THRESHOLD"
+  networkPolicy:
+    gatewayLabel:
+      role: REPLACE_WITH_GATEWAY_ROLE_LABEL
+    monitoringNamespaceLabel:
+      kubernetes.io/metadata.name: REPLACE_WITH_MONITORING_NAMESPACE
+
+gateway:
+  nameOverride: REPLACE_WITH_GATEWAY_NAME
+  gateway:
+    className: REPLACE_WITH_GATEWAY_CLASS
+    hostnames:
+      - REPLACE_WITH_INFERENCE_HOSTNAME
+  admission:
+    image:
+      repository: REPLACE_WITH_REGISTRY_HOST/inference-admission
+      tag: REPLACE_WITH_ADMISSION_TAG
+    tenants:
+      models:
+        REPLACE_WITH_MODEL_ALIAS:
+          served_name: REPLACE_WITH_SERVED_MODEL_NAME
+          max_context_tokens: REPLACE_WITH_MAX_CONTEXT_TOKENS
+  guardrails:
+    enabled: false
+    image:
+      repository: REPLACE_WITH_GUARDRAIL_IMAGE_REPOSITORY
+      tag: REPLACE_WITH_GUARDRAIL_IMAGE_TAG
+    serviceName: REPLACE_WITH_GUARDRAIL_SERVICE_NAME
+    configName: REPLACE_WITH_GUARDRAIL_CONFIG_NAME
+    replicas: REPLACE_WITH_GUARDRAIL_REPLICAS
+  policy:
+    guardrails:
+      enabled: false
+      serviceName: REPLACE_WITH_GUARDRAIL_SERVICE_NAME
+      configName: REPLACE_WITH_GUARDRAIL_CONFIG_NAME
+      defaultRoute: safety_required
+      failureMode: fail_closed
+
+scheduler:
+  wfq:
+    tenants:
+      REPLACE_WITH_CRITICAL_TENANT_ID:
+        weight: 4
+      REPLACE_WITH_STANDARD_TENANT_ID:
+        weight: 2
+      REPLACE_WITH_SHEDDABLE_TENANT_ID:
+        weight: 1
+    defaultWeight: 1
+    debtDecayHalfLifeSeconds: 60
+    maxQueueWaitMs:
+      Critical: 500
+      Standard: 1000
+      Sheddable: 2000
+  reserves:
+    kneeConcurrency: REPLACE_WITH_GOODPUT_KNEE_CONCURRENCY
+    fractions:
+      critical: 0.30
+      standard: 0.55
+      sheddable: 0.15
+    defaultTenantKvTokens: REPLACE_WITH_DEFAULT_TENANT_KV_TOKENS
+    tenantKvTokens:
+      REPLACE_WITH_CRITICAL_TENANT_ID: REPLACE_WITH_CRITICAL_TENANT_KV_TOKENS
+      REPLACE_WITH_STANDARD_TENANT_ID: REPLACE_WITH_STANDARD_TENANT_KV_TOKENS
+      REPLACE_WITH_SHEDDABLE_TENANT_ID: REPLACE_WITH_SHEDDABLE_TENANT_KV_TOKENS
+  brownout:
+    enabled: true
+    recoveryHysteresis: 0.03
+    stableRecoveryIntervals: 2
+    standardMaxTokensCap: REPLACE_WITH_BROWNOUT_STANDARD_MAX_TOKENS
+    fallbackModelAlias: REPLACE_WITH_BROWNOUT_FALLBACK_MODEL_ALIAS
+  routing:
+    heavyThresholdTokens: REPLACE_WITH_HEAVY_CONTEXT_THRESHOLD_TOKENS
+    pools:
+      critical: REPLACE_WITH_CRITICAL_POOL_NAME
+      standard: REPLACE_WITH_STANDARD_POOL_NAME
+      heavy: REPLACE_WITH_HEAVY_POOL_NAME
+
+observability:
+  prometheusStackRelease: REPLACE_WITH_PROMETHEUS_STACK_RELEASE
+  alerts:
+    severities:
+      ttft: REPLACE_WITH_TTFT_ALERT_SEVERITY
+      queue: REPLACE_WITH_QUEUE_ALERT_SEVERITY
+      kv: REPLACE_WITH_KV_ALERT_SEVERITY
+      xid: REPLACE_WITH_XID_ALERT_SEVERITY
+    slo:
+      ttftP95Seconds: REPLACE_WITH_TTFT_P95_SLO_SECONDS
+    queue:
+      waitingToRunningRatio: REPLACE_WITH_WAITING_TO_RUNNING_ALERT_RATIO
+    kv:
+      usagePercent: REPLACE_WITH_KV_CACHE_ALERT_THRESHOLD
+    xid:
+      lookback: REPLACE_WITH_XID_ALERT_LOOKBACK
+  otel:
+    serviceNamespace: REPLACE_WITH_OTEL_SERVICE_NAMESPACE
+    otlpEndpoint: REPLACE_WITH_OTLP_ENDPOINT
+    tlsInsecure: false
+    image:
+      repository: REPLACE_WITH_OTEL_COLLECTOR_IMAGE_REPOSITORY
+      tag: REPLACE_WITH_OTEL_COLLECTOR_IMAGE_TAG
+    memoryLimitMiB: REPLACE_WITH_OTEL_MEMORY_LIMIT_MIB
+
+frontier:
+  profile: REPLACE_WITH_FRONTIER_PROFILE_NAME
+  multinode:
+    nameOverride: REPLACE_WITH_MULTINODE_ENGINE_DEPLOYMENT
+    replicaCount: REPLACE_WITH_MULTINODE_ENGINE_REPLICA_COUNT
+    tensorParallelSize: REPLACE_WITH_TENSOR_PARALLEL_SIZE
+    pipelineParallelSize: REPLACE_WITH_PIPELINE_PARALLEL_SIZE
+    processGroupFailureDomain: REPLACE_WITH_PROCESS_GROUP_FAILURE_DOMAIN
+  fabric:
+    topologyClass: REPLACE_WITH_FABRIC_TOPOLOGY_CLASS
+    ncclIbHca: REPLACE_WITH_NCCL_IB_HCA
+  moe:
+    expertParallelSize: REPLACE_WITH_EXPERT_PARALLEL_SIZE
+    maxExpertImbalanceRatio: REPLACE_WITH_MAX_EXPERT_IMBALANCE_RATIO
+    hotExpertPolicy: REPLACE_WITH_HOT_EXPERT_POLICY
+    fallbackPool: REPLACE_WITH_MOE_FALLBACK_POOL
+  disaggregation:
+    enabled: false
+    connector: REPLACE_WITH_KV_TRANSFER_CONNECTOR
+    prefillPool: REPLACE_WITH_PREFILL_POOL_SERVICE
+    decodePool: REPLACE_WITH_DECODE_POOL_SERVICE
+    monolithicFallbackPool: REPLACE_WITH_MONOLITHIC_FALLBACK_POOL
+  xidWatcher:
+    image: REPLACE_WITH_XID_WATCHER_IMAGE
+    daemonset: REPLACE_WITH_XID_WATCHER_DAEMONSET
+    targetPodSelector: REPLACE_WITH_XID_TARGET_POD_SELECTOR
+    drainTimeout: REPLACE_WITH_XID_DRAIN_TIMEOUT

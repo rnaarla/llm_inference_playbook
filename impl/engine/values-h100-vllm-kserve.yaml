@@ -1,0 +1,52 @@
+nameOverride: REPLACE_WITH_ENGINE_DEPLOYMENT
+profile: h100-vllm-kserve
+
+replicaCount: REPLACE_WITH_ENGINE_REPLICA_COUNT
+
+image:
+  repository: REPLACE_WITH_VLLM_IMAGE_REPOSITORY
+  tag: REPLACE_WITH_VLLM_IMAGE_TAG
+
+model:
+  name: meta-llama/Llama-3.1-70B-Instruct
+  servedName: meta-llama/Llama-3.1-70B-Instruct
+  artifact: oci://REPLACE_WITH_REGISTRY_HOST/models/llama-3.1-70b-fp8@REPLACE_WITH_APPROVED_MODEL_DIGEST
+  cachePath: /models/hf-cache
+
+engine:
+  args:
+    tensorParallelSize: 2
+    dtype: bfloat16
+    quantization: fp8
+    kvCacheDtype: fp8
+    maxModelLen: 16384
+    maxNumSeqs: 256
+    maxNumBatchedTokens: 8192
+    enablePrefixCaching: true
+    enableChunkedPrefill: true
+    gpuMemoryUtilization: "0.90"
+
+keda:
+  prometheusAddress: REPLACE_WITH_PROMETHEUS_SERVICE_URL
+  minReplicaCount: REPLACE_WITH_MIN_REPLICAS
+  maxReplicaCount: REPLACE_WITH_MAX_REPLICAS
+  queueThreshold: "REPLACE_WITH_QUEUE_THRESHOLD"
+
+modelPuller:
+  verification:
+    enabled: true
+    failClosed: true
+    approvedDigest: REPLACE_WITH_APPROVED_MODEL_DIGEST
+  cosignPublicKeySecret: REPLACE_WITH_COSIGN_PUBLIC_KEY_SECRET
+
+hfToken:
+  secretName: REPLACE_WITH_HF_TOKEN_SECRET
+
+nodeSelector:
+  REPLACE_WITH_GPU_NODE_SELECTOR_KEY: REPLACE_WITH_GPU_NODE_SELECTOR_VALUE
+
+networkPolicy:
+  gatewayLabel:
+    role: REPLACE_WITH_GATEWAY_ROLE_LABEL
+  monitoringNamespaceLabel:
+    kubernetes.io/metadata.name: REPLACE_WITH_MONITORING_NAMESPACE

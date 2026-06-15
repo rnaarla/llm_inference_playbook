@@ -1,0 +1,16 @@
+title = "llm-inference-playbook gitleaks config"
+
+[allowlist]
+description = "Allow documented placeholders and fake example domains"
+regexes = [
+  '''REPLACE_WITH_[A-Z0-9_]+''',
+  '''example\\.com''',
+  '''example\\.test''',
+  '''registry\\.example\\.com''',
+  '''fake-[a-z0-9-]+''',
+]
+paths = [
+  '''docs/.*''',
+  '''examples/.*''',
+  '''impl/config/README.md''',
+]

@@ -1,0 +1,37 @@
+promotion:
+  artifact_kind: model
+  environment: REPLACE_WITH_ENVIRONMENT_NAME
+  profile: REPLACE_WITH_PROFILE_NAME
+  promoted_at: REPLACE_WITH_PROMOTION_TIMESTAMP
+  promoted_by: REPLACE_WITH_PROMOTION_ACTOR
+  change_request: REPLACE_WITH_CHANGE_REQUEST_ID
+
+artifact:
+  name: REPLACE_WITH_MODEL
+  source_uri: REPLACE_WITH_MODEL_SOURCE_URI
+  registry_ref: REPLACE_WITH_REGISTRY_HOST/models/REPLACE_WITH_MODEL@REPLACE_WITH_APPROVED_MODEL_DIGEST
+  approved_digest: REPLACE_WITH_APPROVED_MODEL_DIGEST
+  signed_tag: REPLACE_WITH_SIGNED_TAG
+
+provenance:
+  build_commit: REPLACE_WITH_BUILD_COMMIT
+  build_workflow: REPLACE_WITH_BUILD_WORKFLOW_URI
+  sbom_attestation: REPLACE_WITH_SBOM_ATTESTATION_URI
+  slsa_attestation: REPLACE_WITH_SLSA_ATTESTATION_URI
+  model_card: REPLACE_WITH_MODEL_CARD_URI
+
+eval_gate:
+  pipeline_run: REPLACE_WITH_EVAL_PIPELINE_RUN_URI
+  baseline_suite: passed
+  long_context_suite: passed
+  tool_calling_suite: passed
+  domain_suite: passed
+  replay_suite: passed
+  rollback_policy: canary_5_50_100
+
+deployment:
+  canary_steps: [5, 50, 100]
+  rollback_ref: REPLACE_WITH_PREVIOUS_APPROVED_DIGEST
+  runtime_verification:
+    cosign_public_key_secret: REPLACE_WITH_COSIGN_PUBLIC_KEY_SECRET
+    fail_closed: true

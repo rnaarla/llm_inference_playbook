@@ -1,0 +1,105 @@
+nameOverride: REPLACE_WITH_GATEWAY_NAME
+
+gateway:
+  className: REPLACE_WITH_GATEWAY_CLASS
+  hostnames:
+    - REPLACE_WITH_INFERENCE_HOSTNAME
+  listenerPort: 80
+
+engine:
+  serviceName: REPLACE_WITH_ENGINE_SERVICE_NAME
+  servicePort: 8000
+
+admission:
+  enabled: true
+  image:
+    repository: REPLACE_WITH_ADMISSION_IMAGE_REPOSITORY
+    tag: REPLACE_WITH_ADMISSION_IMAGE_TAG
+  serviceName: REPLACE_WITH_ADMISSION_SERVICE_NAME
+  configName: REPLACE_WITH_ADMISSION_CONFIG_NAME
+  replicas: REPLACE_WITH_ADMISSION_REPLICAS
+  defaultTenantId: REPLACE_WITH_DEFAULT_TENANT_ID
+  tenants:
+    defaults:
+      max_input_tokens: 4096
+      max_output_tokens: 1024
+      rpm: 120
+      tpm: 250000
+      priority_class: Standard
+    models:
+      REPLACE_WITH_MODEL_ALIAS:
+        served_name: REPLACE_WITH_SERVED_MODEL_NAME
+        max_context_tokens: 0
+    tenants:
+      REPLACE_WITH_STANDARD_TENANT_ID:
+        priority_class: Standard
+      REPLACE_WITH_SHEDDABLE_TENANT_ID:
+        priority_class: Sheddable
+
+guardrails:
+  enabled: false
+  image:
+    repository: REPLACE_WITH_GUARDRAIL_IMAGE_REPOSITORY
+    tag: REPLACE_WITH_GUARDRAIL_IMAGE_TAG
+  serviceName: REPLACE_WITH_GUARDRAIL_SERVICE_NAME
+  configName: REPLACE_WITH_GUARDRAIL_CONFIG_NAME
+  replicas: REPLACE_WITH_GUARDRAIL_REPLICAS
+  policy:
+    defaults:
+      on_unavailable: fail_closed
+      audit_required: true
+      input:
+        enabled: true
+        on_unavailable: fail_closed
+        max_latency_ms: 250
+      output:
+        enabled: true
+        on_unavailable: fail_closed
+        streaming_chunk_tokens: 128
+    routes:
+      safety_required:
+        input:
+          enabled: true
+          on_unavailable: fail_closed
+        output:
+          enabled: true
+          on_unavailable: fail_closed
+      lower_risk:
+        input:
+          enabled: true
+          on_unavailable: fail_open
+        output:
+          enabled: false
+          on_unavailable: fail_open
+
+policy:
+  # This chart intentionally keeps the policy hook generic because Gateway API
+  # controller support varies. kgateway/Envoy deployments should map this to
+  # ext_authz or an equivalent policy attachment.
+  extAuthz:
+    enabled: true
+    serviceName: REPLACE_WITH_ADMISSION_SERVICE_NAME
+    servicePort: 8080
+    path: /admit
+  retryBudget:
+    enabled: true
+    maxRetries: 1
+    perTryTimeout: 30s
+  audit:
+    requestIdHeader: X-Request-ID
+    tenantHeader: X-Tenant-ID
+  guardrails:
+    enabled: false
+    serviceName: REPLACE_WITH_GUARDRAIL_SERVICE_NAME
+    servicePort: 8080
+    path: /moderate
+    configName: REPLACE_WITH_GUARDRAIL_CONFIG_NAME
+    defaultRoute: safety_required
+    failureMode: fail_closed
+  keepalive:
+    http2PingInterval: 5s
+    tcpKeepaliveTime: 5s
+
+timeouts:
+  request: 600s
+  idle: 620s

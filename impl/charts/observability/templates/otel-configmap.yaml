@@ -1,0 +1,45 @@
+{{- if .Values.otel.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "inference-observability.otelName" . }}-config
+  labels:
+    {{- include "inference-observability.labels" . | nindent 4 }}
+data:
+  collector.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:{{ .Values.otel.service.grpcPort }}
+          http:
+            endpoint: 0.0.0.0:{{ .Values.otel.service.httpPort }}
+
+    processors:
+      memory_limiter:
+        check_interval: 1s
+        limit_mib: ${env:OTEL_MEMORY_LIMIT_MIB}
+      batch:
+      resource/inference:
+        attributes:
+          - key: service.namespace
+            value: ${env:OTEL_SERVICE_NAMESPACE}
+            action: upsert
+
+    exporters:
+      otlp:
+        endpoint: ${env:OTLP_ENDPOINT}
+        tls:
+          insecure: ${env:OTLP_TLS_INSECURE}
+      {{- if .Values.otel.debugExporter.enabled }}
+      debug:
+        verbosity: basic
+      {{- end }}
+
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, resource/inference, batch]
+          exporters: [otlp{{- if .Values.otel.debugExporter.enabled }}, debug{{- end }}]
+{{- end }}

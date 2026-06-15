@@ -1,0 +1,18 @@
+{{- if .Values.keda.enabled }}
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ include "inference-engine.name" . }}-scaler
+spec:
+  scaleTargetRef:
+    name: {{ include "inference-engine.name" . }}
+  minReplicaCount: {{ .Values.keda.minReplicaCount }}
+  maxReplicaCount: {{ .Values.keda.maxReplicaCount }}
+  cooldownPeriod: {{ .Values.keda.cooldownPeriod }}
+  triggers:
+    - type: prometheus
+      metadata:
+        serverAddress: {{ .Values.keda.prometheusAddress | quote }}
+        query: sum(vllm:num_requests_waiting{app="{{ include "inference-engine.name" . }}"}) / count(vllm:num_requests_waiting{app="{{ include "inference-engine.name" . }}"})
+        threshold: {{ .Values.keda.queueThreshold | quote }}
+{{- end }}

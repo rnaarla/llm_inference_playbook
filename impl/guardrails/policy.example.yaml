@@ -1,0 +1,33 @@
+defaults:
+  on_unavailable: fail_closed
+  audit_required: true
+  input:
+    enabled: true
+    on_unavailable: fail_closed
+    max_latency_ms: 250
+  output:
+    enabled: true
+    on_unavailable: fail_closed
+    streaming_chunk_tokens: 128
+
+routes:
+  safety_required:
+    match:
+      model_alias: REPLACE_WITH_MODEL_ALIAS
+      tenant_tier: regulated
+    input:
+      enabled: true
+      on_unavailable: fail_closed
+    output:
+      enabled: true
+      on_unavailable: fail_closed
+  lower_risk:
+    match:
+      model_alias: REPLACE_WITH_MODEL_ALIAS
+      tenant_tier: internal
+    input:
+      enabled: true
+      on_unavailable: fail_open
+    output:
+      enabled: false
+      on_unavailable: fail_open

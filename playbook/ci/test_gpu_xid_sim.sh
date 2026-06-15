@@ -4,7 +4,7 @@ set -euo pipefail
 HOOK="${XID_SIM_HOOK:-}"
 
 if [[ -z "$HOOK" ]]; then
-  echo "SKIP: set XID_SIM_HOOK (see playbook/ci/xid-watcher/README.md)"
+  echo "SKIP: set XID_SIM_HOOK (see impl/fabric/xid-watcher/README.md)"
   exit 0
 fi
 bash -c "$HOOK"

@@ -1,0 +1,63 @@
+nameOverride: inference-observability
+
+global:
+  environmentName: REPLACE_WITH_ENVIRONMENT_NAME
+  namespace: REPLACE_WITH_INFERENCE_NAMESPACE
+  monitoringNamespace: REPLACE_WITH_MONITORING_NAMESPACE
+
+dashboard:
+  enabled: true
+  folder: inference-platform
+  labels:
+    grafana_dashboard: "1"
+
+alerts:
+  enabled: true
+  labels:
+    team: inference-platform
+  runbooks:
+    ttft: playbook/runbooks/ttft-queue-capacity.md
+    queue: playbook/runbooks/ttft-queue-capacity.md
+    kv: playbook/runbooks/kv-exhaustion.md
+    xid: playbook/runbooks/xid-ecc.md
+  severities:
+    ttft: REPLACE_WITH_TTFT_ALERT_SEVERITY
+    queue: REPLACE_WITH_QUEUE_ALERT_SEVERITY
+    kv: REPLACE_WITH_KV_ALERT_SEVERITY
+    xid: REPLACE_WITH_XID_ALERT_SEVERITY
+  slo:
+    ttftP95Seconds: REPLACE_WITH_TTFT_P95_SLO_SECONDS
+  queue:
+    waitingToRunningRatio: REPLACE_WITH_WAITING_TO_RUNNING_ALERT_RATIO
+  kv:
+    usagePercent: REPLACE_WITH_KV_CACHE_ALERT_THRESHOLD
+  xid:
+    lookback: REPLACE_WITH_XID_ALERT_LOOKBACK
+
+otel:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: REPLACE_WITH_OTEL_COLLECTOR_IMAGE_REPOSITORY
+    tag: REPLACE_WITH_OTEL_COLLECTOR_IMAGE_TAG
+    pullPolicy: IfNotPresent
+  serviceNamespace: REPLACE_WITH_OTEL_SERVICE_NAMESPACE
+  otlpEndpoint: REPLACE_WITH_OTLP_ENDPOINT
+  tlsInsecure: false
+  memoryLimitMiB: REPLACE_WITH_OTEL_MEMORY_LIMIT_MIB
+  debugExporter:
+    enabled: false
+  service:
+    grpcPort: 4317
+    httpPort: 4318
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  podLabels: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}

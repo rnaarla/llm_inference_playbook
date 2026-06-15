@@ -1,0 +1,62 @@
+global:
+  environmentName: prod
+  namespace: llm-inference-prod
+  monitoringNamespace: observability-prod
+  region: us-east-1
+
+engine:
+  nameOverride: vllm-llama70b-prod
+  profile: h100-vllm-kserve
+  replicaCount: 4
+  image:
+    repository: registry.example.com/vllm/vllm-openai
+    tag: v0.9.1
+  model:
+    name: llama70b
+    servedName: meta-llama/Llama-3.1-70B-Instruct
+    artifact: oci://registry.example.com/models/llama-3.1-70b-fp8:sha-release
+  modelPuller:
+    cosignPublicKeySecret: cosign-model-public-key-prod
+  hfToken:
+    secretName: hf-token-prod
+  resources:
+    limits:
+      nvidia.com/gpu: 2
+  nodeSelector:
+    nvidia.com/gpu.product: NVIDIA-H100-80GB-HBM3
+  keda:
+    prometheusAddress: http://prometheus-operated.observability-prod.svc:9090
+    minReplicaCount: 4
+    maxReplicaCount: 12
+    queueThreshold: "6"
+  networkPolicy:
+    gatewayLabel:
+      role: inference-gateway
+    monitoringNamespaceLabel:
+      kubernetes.io/metadata.name: observability-prod
+
+gateway:
+  nameOverride: llm-gateway-prod
+  gateway:
+    className: kgateway
+    hostnames:
+      - llm.example.com
+  admission:
+    image:
+      repository: registry.example.com/inference-admission
+      tag: "2026-06-14.1"
+    serviceName: inference-admission-prod
+    configName: inference-admission-tenants-prod
+    replicas: 3
+    defaultTenantId: standard-prod
+    tenants:
+      models:
+        llama70b:
+          served_name: meta-llama/Llama-3.1-70B-Instruct
+          max_context_tokens: 16384
+
+observability:
+  otel:
+    serviceNamespace: llm-inference-prod
+    otlpEndpoint: tempo.observability-prod.svc:4317
+    tlsInsecure: false

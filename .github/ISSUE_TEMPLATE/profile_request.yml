@@ -1,0 +1,24 @@
+name: Profile request
+description: Request a new model/runtime/hardware profile.
+title: "[Profile]: "
+labels: ["profile"]
+body:
+  - type: input
+    id: profile
+    attributes:
+      label: Desired profile name
+      placeholder: h200-vllm-kserve
+    validations:
+      required: true
+  - type: textarea
+    id: stack
+    attributes:
+      label: Target stack
+      description: Runtime, GPU, Kubernetes, driver/CUDA/NCCL, gateway.
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation evidence
+      description: If you have benchmark or staging results, summarize them without secrets.

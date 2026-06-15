@@ -1,0 +1,6 @@
+apiVersion: v2
+name: inference-engine
+description: vLLM inference engine deployment for the playbook implementation.
+type: application
+version: 0.1.0
+appVersion: "0.9.1"

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: inference-observability
+description: Grafana dashboards, Prometheus rules, and OpenTelemetry collector for inference observability.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

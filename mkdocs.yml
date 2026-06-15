@@ -1,0 +1,10 @@
+site_name: LLM Inference Platform Playbook
+docs_dir: .
+nav:
+  - Home: README.md
+  - Setup: docs/setup.md
+  - Architecture: docs/architecture.md
+  - Status: docs/status.md
+  - Design Choices: docs/design-choices.md
+  - Configuration: impl/config/README.md
+plugins: []

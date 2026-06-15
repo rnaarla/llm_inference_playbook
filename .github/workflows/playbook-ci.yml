@@ -3,9 +3,9 @@ name: playbook-ci
 on:
   push:
     branches: [main]
-    paths: ['playbook/**', 'docs/**', 'README.md', '.github/workflows/playbook-ci.yml']
+    paths: ['playbook/**', 'docs/**', 'impl/**', 'examples/**', 'README.md', '.github/**', '*.md', '.gitleaks.toml']
   pull_request:
-    paths: ['playbook/**', 'docs/**', 'README.md', '.github/workflows/playbook-ci.yml']
+    paths: ['playbook/**', 'docs/**', 'impl/**', 'examples/**', 'README.md', '.github/**', '*.md', '.gitleaks.toml']
 
 jobs:
   lint-and-unit:
@@ -27,6 +27,20 @@ jobs:
         run: PATH="$PWD/playbook/.venv/bin:$PATH" make -C playbook test-gateway-unit
       - name: offline bundle
         run: PATH="$PWD/playbook/.venv/bin:$PATH" make -C playbook offline
+      - name: Validate implementation example values
+        run: |
+          playbook/.venv/bin/python impl/ci/validate_values.py impl/environments/values.example.yaml --allow-placeholders
+          playbook/.venv/bin/python impl/ci/validate_values.py examples/dev.local.yaml
+          playbook/.venv/bin/python impl/ci/validate_values.py examples/staging.local.yaml
+          playbook/.venv/bin/python impl/ci/validate_values.py examples/production.local.yaml
+      - name: Compile implementation Python
+        run: playbook/.venv/bin/python -m compileall -q impl
+      - name: Whitespace check
+        run: git diff --check
+      - name: Secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   gpu-validation:
     runs-on: ubuntu-latest

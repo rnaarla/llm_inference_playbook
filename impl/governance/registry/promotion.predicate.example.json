@@ -1,0 +1,10 @@
+{
+  "artifact_kind": "model",
+  "environment": "REPLACE_WITH_ENVIRONMENT_NAME",
+  "profile": "REPLACE_WITH_PROFILE_NAME",
+  "registry_ref": "REPLACE_WITH_REGISTRY_HOST/models/REPLACE_WITH_MODEL@REPLACE_WITH_APPROVED_MODEL_DIGEST",
+  "approved_digest": "REPLACE_WITH_APPROVED_MODEL_DIGEST",
+  "rollback_ref": "REPLACE_WITH_PREVIOUS_APPROVED_DIGEST",
+  "pipeline_run": "REPLACE_WITH_EVAL_PIPELINE_RUN_URI",
+  "change_request": "REPLACE_WITH_CHANGE_REQUEST_ID"
+}

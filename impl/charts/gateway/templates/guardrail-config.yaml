@@ -1,0 +1,9 @@
+{{- if .Values.guardrails.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.guardrails.configName }}
+data:
+  guardrails.yaml: |
+{{ toYaml .Values.guardrails.policy | indent 4 }}
+{{- end }}

@@ -1,0 +1,12 @@
+{{- if .Values.admission.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "inference-gateway.admissionName" . }}
+spec:
+  selector:
+    app: {{ include "inference-gateway.admissionName" . }}
+  ports:
+    - port: 8080
+      targetPort: 8080
+{{- end }}

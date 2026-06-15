@@ -1,0 +1,55 @@
+tenants:
+  REPLACE_WITH_CRITICAL_TENANT_ID:
+    weight: 4
+  REPLACE_WITH_STANDARD_TENANT_ID:
+    weight: 2
+  REPLACE_WITH_SHEDDABLE_TENANT_ID:
+    weight: 1
+
+aging:
+  debt_decay_half_life_s: 60
+  max_queue_wait_ms:
+    Critical: 500
+    Standard: 1000
+    Sheddable: 2000
+
+# Keep this file environment-neutral. Real tenant ids, weights, reserve limits,
+# and pool names should come from private overlays or parameter-store generated
+# values. See impl/config/README.md for the full E3 configuration contract.
+default_weight: 1
+
+reserves:
+  knee_concurrency: REPLACE_WITH_GOODPUT_KNEE_CONCURRENCY
+  critical_fraction: 0.30
+  standard_fraction: 0.55
+  sheddable_fraction: 0.15
+  default_tenant_kv_tokens: REPLACE_WITH_DEFAULT_TENANT_KV_TOKENS
+  tenant_kv_tokens:
+    REPLACE_WITH_CRITICAL_TENANT_ID: REPLACE_WITH_CRITICAL_TENANT_KV_TOKENS
+    REPLACE_WITH_STANDARD_TENANT_ID: REPLACE_WITH_STANDARD_TENANT_KV_TOKENS
+    REPLACE_WITH_SHEDDABLE_TENANT_ID: REPLACE_WITH_SHEDDABLE_TENANT_KV_TOKENS
+
+brownout:
+  enabled: true
+  recovery_hysteresis: 0.03
+  stable_recovery_intervals: 2
+  rungs:
+    - level: 1
+      kv_cache_usage_threshold: 0.85
+      actions: [shed_sheddable]
+    - level: 2
+      kv_cache_usage_threshold: 0.90
+      actions: [cap_standard_max_tokens, disable_speculative_decoding]
+    - level: 3
+      kv_cache_usage_threshold: 0.95
+      actions: [route_standard_to_fallback_model]
+    - level: 4
+      kv_cache_usage_threshold: 0.97
+      actions: [shed_standard, critical_only]
+
+routing:
+  heavy_threshold_tokens: REPLACE_WITH_HEAVY_CONTEXT_THRESHOLD_TOKENS
+  pools:
+    critical: REPLACE_WITH_CRITICAL_POOL_NAME
+    standard: REPLACE_WITH_STANDARD_POOL_NAME
+    heavy: REPLACE_WITH_HEAVY_POOL_NAME

@@ -1,0 +1,37 @@
+{{- if .Values.admission.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "inference-gateway.admissionName" . }}
+spec:
+  replicas: {{ .Values.admission.replicas }}
+  selector:
+    matchLabels:
+      app: {{ include "inference-gateway.admissionName" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "inference-gateway.admissionName" . }}
+    spec:
+      containers:
+        - name: admission
+          image: "{{ .Values.admission.image.repository }}:{{ .Values.admission.image.tag }}"
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ADMISSION_CONFIG
+              value: /config/tenants.yaml
+            - name: DEFAULT_TENANT_ID
+              value: {{ .Values.admission.defaultTenantId | quote }}
+          volumeMounts:
+            - name: config
+              mountPath: /config
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+      volumes:
+        - name: config
+          configMap:
+            name: {{ .Values.admission.configName }}
+{{- end }}

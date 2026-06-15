@@ -4,6 +4,7 @@ set -euo pipefail
 URL="${STAGING_GATEWAY_URL:-}"
 REQUIRE="${STAGING_REQUIRE:-0}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+REPO_ROOT="$(cd "${ROOT}/.." && pwd)"
 
 if [[ -n "$URL" ]]; then
   python3 - <<'PY' "$URL"
@@ -23,5 +24,10 @@ if [[ "$REQUIRE" == "1" ]]; then
   exit 1
 fi
 
-cd "${ROOT}/ci" && python3 -m pytest test_gateway.py::test_max_tokens_admission_400_before_any_network -q
-echo "test-tenant-quota: unit-level admission check passed"
+if [[ -f "${REPO_ROOT}/impl/gateway/admission/test_app.py" ]]; then
+  cd "${REPO_ROOT}/impl/gateway/admission" && python3 -m pytest test_app.py::test_rejects_oversized_output_before_engine -q
+  echo "test-tenant-quota: implementation admission unit check passed"
+else
+  cd "${ROOT}/ci" && python3 -m pytest test_gateway.py::test_max_tokens_admission_400_before_any_network -q
+  echo "test-tenant-quota: learning gateway unit check passed"
+fi

@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+*.rendered.yaml
+environments/*.local.yaml
+environments/*.secret.yaml
+config/*.local.yaml
+config/*.secret.yaml

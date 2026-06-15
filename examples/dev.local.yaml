@@ -1,0 +1,62 @@
+global:
+  environmentName: dev
+  namespace: llm-dev
+  monitoringNamespace: observability-dev
+  region: local
+
+engine:
+  nameOverride: vllm-dev
+  profile: h100-vllm-kserve
+  replicaCount: 1
+  image:
+    repository: vllm/vllm-openai
+    tag: v0.9.1
+  model:
+    name: llama8b
+    servedName: meta-llama/Llama-3.1-8B-Instruct
+    artifact: oci://registry.dev.example.test/models/llama-3.1-8b:dev
+  modelPuller:
+    cosignPublicKeySecret: cosign-model-public-key-dev
+  hfToken:
+    secretName: hf-token-dev
+  resources:
+    limits:
+      nvidia.com/gpu: 1
+  nodeSelector:
+    nvidia.com/gpu.product: NVIDIA-L40S
+  keda:
+    prometheusAddress: http://prometheus-operated.observability-dev.svc:9090
+    minReplicaCount: 1
+    maxReplicaCount: 2
+    queueThreshold: "2"
+  networkPolicy:
+    gatewayLabel:
+      role: inference-gateway
+    monitoringNamespaceLabel:
+      kubernetes.io/metadata.name: observability-dev
+
+gateway:
+  nameOverride: llm-gateway-dev
+  gateway:
+    className: kgateway-dev
+    hostnames:
+      - llm.dev.example.test
+  admission:
+    image:
+      repository: registry.dev.example.test/inference-admission
+      tag: dev
+    serviceName: inference-admission-dev
+    configName: inference-admission-tenants-dev
+    replicas: 1
+    defaultTenantId: standard-dev
+    tenants:
+      models:
+        llama8b:
+          served_name: meta-llama/Llama-3.1-8B-Instruct
+          max_context_tokens: 4096
+
+observability:
+  otel:
+    serviceNamespace: llm-dev
+    otlpEndpoint: tempo.observability-dev.svc:4317
+    tlsInsecure: true

@@ -1,0 +1,16 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: {{ include "inference-gateway.name" . }}
+  labels:
+    role: inference-gateway
+spec:
+  gatewayClassName: {{ .Values.gateway.className }}
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: {{ .Values.gateway.listenerPort }}
+      hostname: {{ index .Values.gateway.hostnames 0 | quote }}
+      allowedRoutes:
+        namespaces:
+          from: Same

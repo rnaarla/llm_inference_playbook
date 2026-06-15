@@ -1,0 +1,18 @@
+apiVersion: v2
+name: cluster-prereqs
+description: Cluster prerequisites for the LLM inference implementation.
+type: application
+version: 0.1.0
+dependencies:
+  - name: keda
+    version: "2.16.1"
+    repository: https://kedacore.github.io/charts
+    condition: keda.enabled
+  - name: dcgm-exporter
+    version: "3.6.1"
+    repository: https://nvidia.github.io/dcgm-exporter/helm-charts
+    condition: dcgmExporter.enabled
+  - name: cert-manager
+    version: "v1.16.2"
+    repository: https://charts.jetstack.io
+    condition: certManager.enabled

@@ -1,0 +1,220 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "inference-engine.name" . }}
+  labels:
+    {{- include "inference-engine.labels" . | nindent 4 }}
+  annotations:
+    platform/profile: {{ .Values.profile | quote }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "inference-engine.name" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "inference-engine.name" . }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: {{ .Values.service.port | quote }}
+        platform/profile: {{ .Values.profile | quote }}
+        {{- if .Values.lora.enabled }}
+        {{ .Values.lora.routing.localityLabel }}: {{ join "," (keys .Values.lora.adapters | sortAlpha) | quote }}
+        {{- end }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      {{- if .Values.modelPuller.enabled }}
+      initContainers:
+        {{- if .Values.modelPuller.verification.enabled }}
+        - name: verify-model-signature
+          image: {{ .Values.modelPuller.verifyImage }}
+          command: ["/busybox/sh", "-c"]
+          args:
+            - |
+              set -eu
+              artifact="{{ .Values.model.artifact }}"
+              key="{{ .Values.modelPuller.verification.publicKeyMountPath }}"
+              verify_args="--key ${key}"
+              {{- if .Values.modelPuller.verification.identityRegexp }}
+              verify_args="${verify_args} --certificate-identity-regexp {{ .Values.modelPuller.verification.identityRegexp }}"
+              {{- end }}
+              {{- if .Values.modelPuller.verification.issuer }}
+              verify_args="${verify_args} --certificate-oidc-issuer {{ .Values.modelPuller.verification.issuer }}"
+              {{- end }}
+              echo "Verifying signed model artifact: ${artifact}"
+              cosign verify ${verify_args} "${artifact}"
+              {{- if .Values.modelPuller.verification.approvedDigest }}
+              approved="{{ .Values.modelPuller.verification.approvedDigest }}"
+              case "${artifact}" in
+                *"@${approved}"|*"@sha256:${approved#sha256:}") ;;
+                *)
+                  echo "model artifact must be digest-pinned to approved digest ${approved}"
+                  exit 1
+                  ;;
+              esac
+              {{- end }}
+          volumeMounts:
+            - name: cosign-public-key
+              mountPath: /cosign
+              readOnly: true
+        {{- end }}
+        - name: verify-and-pull-model
+          image: {{ .Values.modelPuller.image }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -eu
+              echo "Pulling signed model artifact: {{ .Values.model.artifact }}"
+              mkdir -p {{ .Values.model.cachePath }}
+              oras pull {{ .Values.model.artifact }} -o {{ .Values.model.cachePath }}
+          volumeMounts:
+            - name: model-cache
+              mountPath: {{ .Values.model.cachePath }}
+        {{- if .Values.lora.enabled }}
+        - name: pull-lora-adapters
+          image: {{ .Values.modelPuller.image }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -eu
+              mkdir -p {{ .Values.lora.adapterCachePath }}
+              {{- range $adapterID, $artifact := .Values.lora.adapters }}
+              echo "Pulling signed LoRA adapter {{ $adapterID }}: {{ $artifact }}"
+              mkdir -p {{ $.Values.lora.adapterCachePath }}/{{ $adapterID }}
+              oras pull {{ $artifact }} -o {{ $.Values.lora.adapterCachePath }}/{{ $adapterID }}
+              {{- end }}
+          volumeMounts:
+            - name: lora-adapter-cache
+              mountPath: {{ .Values.lora.adapterCachePath }}
+        {{- end }}
+      {{- end }}
+      containers:
+        - name: vllm
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - "--model"
+            - {{ .Values.model.cachePath | quote }}
+            - "--served-model-name"
+            - {{ .Values.model.servedName | quote }}
+            - "--tensor-parallel-size"
+            - {{ .Values.engine.args.tensorParallelSize | quote }}
+            - "--dtype"
+            - {{ .Values.engine.args.dtype | quote }}
+            - "--quantization"
+            - {{ .Values.engine.args.quantization | quote }}
+            - "--kv-cache-dtype"
+            - {{ .Values.engine.args.kvCacheDtype | quote }}
+            - "--max-model-len"
+            - {{ .Values.engine.args.maxModelLen | quote }}
+            - "--max-num-seqs"
+            - {{ .Values.engine.args.maxNumSeqs | quote }}
+            - "--max-num-batched-tokens"
+            - {{ .Values.engine.args.maxNumBatchedTokens | quote }}
+            {{- if .Values.engine.args.enablePrefixCaching }}
+            - "--enable-prefix-caching"
+            {{- end }}
+            {{- if .Values.engine.args.enableChunkedPrefill }}
+            - "--enable-chunked-prefill"
+            {{- end }}
+            {{- if .Values.lora.enabled }}
+            - "--enable-lora"
+            - "--max-loras"
+            - {{ .Values.engine.args.maxLoras | quote }}
+            - "--max-lora-rank"
+            - {{ .Values.engine.args.maxLoraRank | quote }}
+            - "--lora-modules"
+            {{- range $adapterID, $artifact := .Values.lora.adapters }}
+            - {{ printf "%s=%s/%s" $adapterID $.Values.lora.adapterCachePath $adapterID | quote }}
+            {{- end }}
+            {{- end }}
+            - "--gpu-memory-utilization"
+            - {{ .Values.engine.args.gpuMemoryUtilization | quote }}
+            - "--port"
+            - {{ .Values.service.port | quote }}
+          env:
+            - name: HF_HOME
+              value: {{ .Values.model.cachePath | quote }}
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.hfToken.secretName }}
+                  key: {{ .Values.hfToken.key }}
+                  optional: true
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          ports:
+            - containerPort: {{ .Values.service.port }}
+          startupProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - >-
+                  curl -sf -m 30 http://localhost:{{ .Values.service.port }}/v1/chat/completions
+                  -H 'Content-Type: application/json'
+                  -d '{"model":"{{ .Values.model.servedName }}","messages":[{"role":"user","content":"ping"}],"max_tokens":1}'
+                  | python3 -c 'import sys,json; r=json.load(sys.stdin); assert r["choices"][0]["message"] is not None'
+            periodSeconds: 15
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.service.port }}
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.service.port }}
+            periodSeconds: 30
+            failureThreshold: 5
+          volumeMounts:
+            - name: model-cache
+              mountPath: {{ .Values.model.cachePath }}
+            {{- if .Values.lora.enabled }}
+            - name: lora-adapter-cache
+              mountPath: {{ .Values.lora.adapterCachePath }}
+            - name: lora-adapter-registry
+              mountPath: {{ .Values.lora.adapterRegistryMountPath }}
+              readOnly: true
+            {{- end }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sh", "-c", "sleep 30"]
+      terminationGracePeriodSeconds: 180
+      volumes:
+        - name: model-cache
+          emptyDir: {}
+        {{- if and .Values.modelPuller.enabled .Values.modelPuller.verification.enabled }}
+        - name: cosign-public-key
+          secret:
+            secretName: {{ .Values.modelPuller.cosignPublicKeySecret }}
+        {{- end }}
+        {{- if .Values.lora.enabled }}
+        - name: lora-adapter-cache
+          emptyDir: {}
+        - name: lora-adapter-registry
+          configMap:
+            name: {{ .Values.lora.adapterRegistryConfigName }}
+        {{- end }}
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }}
+      tolerations:
+        {{- toYaml .Values.tolerations | nindent 8 }}
+      {{- if .Values.topologySpreadConstraints.enabled }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: {{ .Values.topologySpreadConstraints.topologyKey }}
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: {{ include "inference-engine.name" . }}
+      {{- end }}

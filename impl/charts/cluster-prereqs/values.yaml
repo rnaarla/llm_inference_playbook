@@ -1,0 +1,19 @@
+keda:
+  enabled: true
+
+dcgmExporter:
+  enabled: true
+  serviceMonitor:
+    enabled: false
+
+certManager:
+  enabled: true
+  installCRDs: true
+
+gpuOperator:
+  # Most production clusters install NVIDIA GPU Operator through a platform
+  # baseline. Keep this as a documented requirement instead of nesting another
+  # heavy dependency by default.
+  required: true
+  nodeSelector:
+    nvidia.com/gpu.present: "true"

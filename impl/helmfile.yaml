@@ -1,0 +1,33 @@
+repositories:
+  - name: prometheus-community
+    url: https://prometheus-community.github.io/helm-charts
+
+releases:
+  - name: {{ requiredEnv "CLUSTER_PREREQS_RELEASE" }}
+    namespace: {{ requiredEnv "INFERENCE_NAMESPACE" }}
+    chart: ./charts/cluster-prereqs
+
+  - name: {{ requiredEnv "INFERENCE_ENGINE_RELEASE" }}
+    namespace: {{ requiredEnv "INFERENCE_NAMESPACE" }}
+    chart: ./charts/inference-engine
+    values:
+      - ./charts/inference-engine/values.yaml
+      - ./engine/values-h100-vllm-kserve.yaml
+
+  - name: {{ requiredEnv "INFERENCE_GATEWAY_RELEASE" }}
+    namespace: {{ requiredEnv "INFERENCE_NAMESPACE" }}
+    chart: ./charts/gateway
+    values:
+      - ./charts/gateway/values.yaml
+
+  - name: {{ requiredEnv "PROMETHEUS_STACK_RELEASE" }}
+    namespace: {{ requiredEnv "OBSERVABILITY_NAMESPACE" }}
+    chart: prometheus-community/kube-prometheus-stack
+    values:
+      - ./observability/values-kube-prometheus-stack.yaml
+
+  - name: {{ requiredEnv "INFERENCE_OBSERVABILITY_RELEASE" }}
+    namespace: {{ requiredEnv "OBSERVABILITY_NAMESPACE" }}
+    chart: ./charts/observability
+    values:
+      - ./charts/observability/values.yaml

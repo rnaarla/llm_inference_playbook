@@ -1,0 +1,19 @@
+defaults:
+  max_input_tokens: 4096
+  max_output_tokens: 1024
+  rpm: 120
+  tpm: 250000
+  priority_class: Standard
+
+models:
+  llama70b:
+    served_name: test-served-model
+    max_context_tokens: 16384
+
+tenants:
+  standard-prod:
+    priority_class: Standard
+  experiments:
+    priority_class: Sheddable
+    rpm: 30
+    tpm: 50000

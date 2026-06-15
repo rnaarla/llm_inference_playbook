@@ -1,0 +1,17 @@
+registry:
+  version: v1
+  base_model: REPLACE_WITH_SERVED_MODEL_NAME
+  max_lora_rank: 64
+  locality_label: REPLACE_WITH_ADAPTER_LOCALITY_LABEL
+
+adapters:
+  - id: REPLACE_WITH_ADAPTER_ID
+    artifact: oci://REPLACE_WITH_REGISTRY_HOST/adapters/REPLACE_WITH_ADAPTER@REPLACE_WITH_APPROVED_ADAPTER_DIGEST
+    approved_digest: REPLACE_WITH_APPROVED_ADAPTER_DIGEST
+    tenant_ids:
+      - REPLACE_WITH_STANDARD_TENANT_ID
+    route_aliases:
+      - REPLACE_WITH_MODEL_ALIAS
+    rank: 64
+    enabled: true
+    promotion_ref: REPLACE_WITH_ADAPTER_PROMOTION_METADATA_URI

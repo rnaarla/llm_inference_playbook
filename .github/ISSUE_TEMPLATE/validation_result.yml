@@ -1,0 +1,26 @@
+name: Validation result
+description: Share non-sensitive validation results for a profile.
+title: "[Validation]: "
+labels: ["validation"]
+body:
+  - type: input
+    id: profile
+    attributes:
+      label: Profile
+      placeholder: h100-vllm-kserve
+    validations:
+      required: true
+  - type: textarea
+    id: targets
+    attributes:
+      label: Targets run
+      placeholder: make -C playbook gpu
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: Result summary
+      description: Do not include private hostnames, tenant data, or secrets.
+    validations:
+      required: true

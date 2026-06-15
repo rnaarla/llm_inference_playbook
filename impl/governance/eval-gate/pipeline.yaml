@@ -1,0 +1,45 @@
+stages:
+  - name: baseline
+    tasks: [gsm8k, mmlu, ifeval]
+    required: true
+  - name: long-context
+    tasks: [ruler]
+    required: true
+  - name: tool-calling
+    tasks: [bfcl]
+    required: true
+  - name: domain
+    dataset: REPLACE_WITH_DOMAIN_EVAL_DATASET_URI
+    required: true
+  - name: replay
+    dataset: REPLACE_WITH_PRODUCTION_REPLAY_DATASET_URI
+    required: true
+inputs:
+  candidate_artifact: REPLACE_WITH_REGISTRY_HOST/models/REPLACE_WITH_MODEL@REPLACE_WITH_APPROVED_MODEL_DIGEST
+  baseline_artifact: REPLACE_WITH_REGISTRY_HOST/models/REPLACE_WITH_MODEL@REPLACE_WITH_PREVIOUS_APPROVED_DIGEST
+  profile: REPLACE_WITH_PROFILE_NAME
+  model_card_template: impl/governance/registry/model_card.template.md
+  promotion_metadata_template: impl/governance/registry/promotion.example.yaml
+outputs:
+  promotion_metadata: promotion.yaml
+  model_card: model_card.md
+  approved_digest: REPLACE_WITH_APPROVED_MODEL_DIGEST
+promotion:
+  canary_steps: [5, 50, 100]
+  metadata_shape:
+    artifact_kind: model
+    environment: REPLACE_WITH_ENVIRONMENT_NAME
+    registry_ref: REPLACE_WITH_REGISTRY_HOST/models/REPLACE_WITH_MODEL@REPLACE_WITH_APPROVED_MODEL_DIGEST
+    approved_digest: REPLACE_WITH_APPROVED_MODEL_DIGEST
+    rollback_ref: REPLACE_WITH_PREVIOUS_APPROVED_DIGEST
+    cosign_public_key_secret: REPLACE_WITH_COSIGN_PUBLIC_KEY_SECRET
+  runtime_updates:
+    - model.artifact
+    - modelPuller.verification.approvedDigest
+    - modelPuller.cosignPublicKeySecret
+  rollback_on:
+    - goodput_regression_pct: 5
+    - bfcl_drop_points: 5
+    - structured_output_validity_drop_pct: 2
+    - guardrail_policy_regression: true
+    - unsigned_or_mutable_artifact: true

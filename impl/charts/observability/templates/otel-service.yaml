@@ -1,0 +1,18 @@
+{{- if .Values.otel.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "inference-observability.otelName" . }}
+  labels:
+    {{- include "inference-observability.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: {{ include "inference-observability.otelName" . }}
+  ports:
+    - name: otlp-grpc
+      port: {{ .Values.otel.service.grpcPort }}
+      targetPort: otlp-grpc
+    - name: otlp-http
+      port: {{ .Values.otel.service.httpPort }}
+      targetPort: otlp-http
+{{- end }}

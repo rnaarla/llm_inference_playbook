@@ -7,7 +7,9 @@
 | Recoverable | XID 13, 31 | Restart engine container |
 | Fatal | XID 79, 94 | Cordon node, drain, `dcgmi diag -r 2` |
 
-Compare NCCL busbw to fabric baseline: `playbook/benchmarks/fabric_baseline.yaml`
+Compare NCCL busbw to the generated fabric baseline
+(`playbook/benchmarks/fabric_baseline.yaml` by default, or `FABRIC_BASELINE_OUT`
+when set). Do not commit live fabric outputs.
 
 ## Validation target
 `make -C playbook test-gpu-xid-sim`

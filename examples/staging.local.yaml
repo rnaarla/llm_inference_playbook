@@ -1,0 +1,62 @@
+global:
+  environmentName: staging
+  namespace: llm-inference-staging
+  monitoringNamespace: observability-staging
+  region: us-east-1
+
+engine:
+  nameOverride: vllm-llama70b-staging
+  profile: h100-vllm-kserve
+  replicaCount: 2
+  image:
+    repository: registry.staging.example.com/vllm/vllm-openai
+    tag: v0.9.1
+  model:
+    name: llama70b
+    servedName: meta-llama/Llama-3.1-70B-Instruct
+    artifact: oci://registry.staging.example.com/models/llama-3.1-70b-fp8:sha-abc1234
+  modelPuller:
+    cosignPublicKeySecret: cosign-model-public-key-staging
+  hfToken:
+    secretName: hf-token-staging
+  resources:
+    limits:
+      nvidia.com/gpu: 2
+  nodeSelector:
+    nvidia.com/gpu.product: NVIDIA-H100-80GB-HBM3
+  keda:
+    prometheusAddress: http://prometheus-operated.observability-staging.svc:9090
+    minReplicaCount: 2
+    maxReplicaCount: 6
+    queueThreshold: "6"
+  networkPolicy:
+    gatewayLabel:
+      role: inference-gateway
+    monitoringNamespaceLabel:
+      kubernetes.io/metadata.name: observability-staging
+
+gateway:
+  nameOverride: llm-gateway-staging
+  gateway:
+    className: kgateway
+    hostnames:
+      - llm.staging.example.com
+  admission:
+    image:
+      repository: registry.staging.example.com/inference-admission
+      tag: "2026-06-14.1"
+    serviceName: inference-admission-staging
+    configName: inference-admission-tenants-staging
+    replicas: 2
+    defaultTenantId: standard-prod
+    tenants:
+      models:
+        llama70b:
+          served_name: meta-llama/Llama-3.1-70B-Instruct
+          max_context_tokens: 16384
+
+observability:
+  otel:
+    serviceNamespace: llm-inference-staging
+    otlpEndpoint: tempo.observability-staging.svc:4317
+    tlsInsecure: true

@@ -1,0 +1,14 @@
+verification:
+  enabled: true
+  fail_closed: true
+  model_artifact: REPLACE_WITH_REGISTRY_HOST/models/REPLACE_WITH_MODEL@REPLACE_WITH_APPROVED_MODEL_DIGEST
+  approved_digest: REPLACE_WITH_APPROVED_MODEL_DIGEST
+  cosign_public_key_secret: REPLACE_WITH_COSIGN_PUBLIC_KEY_SECRET
+  cosign_public_key_path: /cosign/cosign.pub
+  certificate_identity_regexp: ""
+  certificate_oidc_issuer: ""
+
+runtime:
+  unsigned_checkpoint_policy: reject
+  readiness_on_failure: false
+  audit_sink: REPLACE_WITH_AUDIT_SINK

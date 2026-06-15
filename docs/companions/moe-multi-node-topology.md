@@ -42,7 +42,9 @@ Checklist:
 - [ ] Adaptive Routing (AR) enabled on fabric ([T2] — see Appendix G)  
 - [ ] SHARP enabled where available for all-reduce heavy phases  
 
-Record baselines in `playbook/benchmarks/fabric_baseline.yaml`.
+Record generated baselines at `playbook/benchmarks/fabric_baseline.yaml` or an
+environment-specific path via `FABRIC_BASELINE_OUT`. Do not commit live fabric
+outputs.
 
 ---
 

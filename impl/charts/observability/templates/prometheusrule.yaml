@@ -1,0 +1,45 @@
+{{- if .Values.alerts.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "inference-observability.name" . }}-alerts
+  labels:
+    {{- include "inference-observability.labels" . | nindent 4 }}
+    {{- toYaml .Values.alerts.labels | nindent 4 }}
+spec:
+  groups:
+    - name: inference.slo
+      rules:
+        - alert: InferenceTTFTP95High
+          expr: histogram_quantile(0.95, sum by (le) (rate(vllm:time_to_first_token_seconds_bucket[5m]))) > {{ .Values.alerts.slo.ttftP95Seconds }}
+          for: 5m
+          labels:
+            severity: {{ .Values.alerts.severities.ttft | quote }}
+          annotations:
+            summary: Inference TTFT P95 is above the configured SLO.
+            runbook: {{ .Values.alerts.runbooks.ttft | quote }}
+        - alert: InferenceQueueBound
+          expr: sum(vllm:num_requests_waiting) > {{ .Values.alerts.queue.waitingToRunningRatio }} * clamp_min(sum(vllm:num_requests_running), 1)
+          for: 5m
+          labels:
+            severity: {{ .Values.alerts.severities.queue | quote }}
+          annotations:
+            summary: Waiting requests exceed the configured running-request ratio.
+            runbook: {{ .Values.alerts.runbooks.queue | quote }}
+        - alert: InferenceKVPressure
+          expr: max(vllm:kv_cache_usage_perc) > {{ .Values.alerts.kv.usagePercent }}
+          for: 2m
+          labels:
+            severity: {{ .Values.alerts.severities.kv | quote }}
+          annotations:
+            summary: KV cache usage is above the configured pressure threshold.
+            runbook: {{ .Values.alerts.runbooks.kv | quote }}
+        - alert: GPUXIDError
+          expr: sum(increase(DCGM_FI_DEV_XID_ERRORS[{{ .Values.alerts.xid.lookback }}])) > 0
+          for: 1m
+          labels:
+            severity: {{ .Values.alerts.severities.xid | quote }}
+          annotations:
+            summary: GPU XID errors were observed by DCGM exporter.
+            runbook: {{ .Values.alerts.runbooks.xid | quote }}
+{{- end }}

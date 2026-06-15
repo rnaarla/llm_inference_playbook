@@ -1,0 +1,53 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: REPLACE_WITH_NCCL_JOB_NAME
+  namespace: REPLACE_WITH_INFERENCE_NAMESPACE
+spec:
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nccl-fabric-baseline
+    spec:
+      restartPolicy: Never
+      nodeSelector:
+        REPLACE_WITH_GPU_NODE_SELECTOR_KEY: REPLACE_WITH_GPU_NODE_SELECTOR_VALUE
+      containers:
+        - name: nccl-tests
+          image: REPLACE_WITH_NCCL_TESTS_IMAGE
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/bash", "-lc"]
+          args:
+            - |
+              set -euo pipefail
+              ${NCCL_TESTS_PATH}/all_reduce_perf -b ${NCCL_MACRO_MIN_BYTES} -e ${NCCL_MACRO_MAX_BYTES} -f 2 -g ${GPUS_PER_POD}
+              NCCL_ALGO=${NCCL_MICRO_ALGO} NCCL_PROTO=${NCCL_MICRO_PROTO} \
+                ${NCCL_TESTS_PATH}/all_reduce_perf -b ${NCCL_MICRO_MIN_BYTES} -e ${NCCL_MICRO_MAX_BYTES} -f 2 -g ${GPUS_PER_POD}
+          env:
+            - name: GPUS_PER_POD
+              value: "REPLACE_WITH_GPU_COUNT"
+            - name: NCCL_TESTS_PATH
+              value: REPLACE_WITH_NCCL_TESTS_PATH
+            - name: NCCL_IB_HCA
+              value: REPLACE_WITH_NCCL_IB_HCA
+            - name: NCCL_DEBUG
+              value: INFO
+            - name: NCCL_MACRO_MIN_BYTES
+              value: REPLACE_WITH_NCCL_MACRO_MIN_BYTES
+            - name: NCCL_MACRO_MAX_BYTES
+              value: REPLACE_WITH_NCCL_MACRO_MAX_BYTES
+            - name: NCCL_MICRO_MIN_BYTES
+              value: REPLACE_WITH_NCCL_MICRO_MIN_BYTES
+            - name: NCCL_MICRO_MAX_BYTES
+              value: REPLACE_WITH_NCCL_MICRO_MAX_BYTES
+            - name: NCCL_MICRO_ALGO
+              value: REPLACE_WITH_NCCL_MICRO_ALGO
+            - name: NCCL_MICRO_PROTO
+              value: REPLACE_WITH_NCCL_MICRO_PROTO
+          resources:
+            limits:
+              nvidia.com/gpu: REPLACE_WITH_GPU_COUNT
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule

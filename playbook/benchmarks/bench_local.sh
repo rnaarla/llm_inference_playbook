@@ -76,53 +76,18 @@ vllm bench serve \
   --max-concurrency 64 \
   2>&1 | tee "${OUT_DIR}/bench_steady.log"
 
-python3 - <<'PY' "${OUT_DIR}" "${PROFILE}" "${MODEL}" "${OPERATOR}" "${WARMUP_MIN}" "${STEADY_MIN}"
-import sys, re, yaml
-from pathlib import Path
-from datetime import datetime, timezone
-out, profile, model, op = Path(sys.argv[1]), sys.argv[2], sys.argv[3], sys.argv[4]
-warmup, steady = int(sys.argv[5]), int(sys.argv[6])
-log = (out / "bench_steady.log").read_text(errors="replace")
-# Best-effort parse vllm bench output — fill zeros if not found
-def find_float(pattern, default=0.0):
-    m = re.search(pattern, log, re.I)
-    return float(m.group(1)) if m else default
-report = {
-  "benchmark_report": {
-    "profile": profile,
-    "model": model,
-    "hardware": "fill from nvidia-smi / cluster metadata",
-    "traffic": {
-      "source": "synthetic-vllm-bench",
-      "prompt_tokens": {"p50": 512, "p95": 1024, "p99": 2048},
-      "output_tokens": {"p50": 256, "p95": 512, "p99": 1024},
-      "cache_hit_rate": 0.0,
-      "structured_output_fraction": 0.0,
-    },
-    "results": {
-      "ttft_ms": {"p50": find_float(r"TTFT.*?p50[=:\s]+([\d.]+)"), "p95": find_float(r"p95[=:\s]+([\d.]+)"),
-                  "p99": 0, "hit_p95": 0, "miss_p95": find_float(r"TTFT.*?p95[=:\s]+([\d.]+)")},
-      "tpot_ms": {"p50": 0, "p95": 0, "p99": 0},
-      "e2e_s": {"p50": 0, "p95": 0, "p99": 0},
-      "goodput_knee": {"concurrency": 64, "output_tok_s": find_float(r"Output.*?([\d.]+)\s*tok/s"), "input_tok_s": 0},
-      "queue_wait_ms_p95": 0,
-      "preemptions": 0,
-      "kv_usage_peak": 0.0,
-      "dram_active_mean": 0.0,
-    },
-    "decisions": {
-      "per_replica_concurrency_cap": 0,
-      "replica_count": 0,
-      "keda_queue_threshold": 0,
-      "cost_per_1M": {"input": 0.0, "output": 0.0, "total": 0.0},
-    },
-    "run": {"warmup_min": warmup, "steady_min": steady,
-            "date": datetime.now(timezone.utc).isoformat(), "operator": op},
-  }
-}
-(out / "report.yaml").write_text(yaml.dump(report, sort_keys=False))
-print(f"wrote {out / 'report.yaml'} — review and fill decisions from knee analysis")
-PY
+PARSER="${ROOT}/../impl/engine/bench/parse_vllm_bench.py"
+if [[ ! -x "${PARSER}" ]]; then
+  PARSER="python3 ${PARSER}"
+fi
+${PARSER} \
+  --log "${OUT_DIR}/bench_steady.log" \
+  --profile "${PROFILE}" \
+  --model "${MODEL}" \
+  --operator "${OPERATOR}" \
+  --warmup-min "${WARMUP_MIN}" \
+  --steady-min "${STEADY_MIN}" \
+  --out "${OUT_DIR}/report.yaml"
 
 bash "${ROOT}/ci/validate-benchmark-report.sh" "${OUT_DIR}/report.yaml"
 echo "bench-local: ${OUT_DIR}/report.yaml"

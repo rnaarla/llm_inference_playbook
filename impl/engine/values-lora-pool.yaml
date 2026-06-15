@@ -1,0 +1,27 @@
+engine:
+  args:
+    enableLora: true
+    maxLoras: 8
+    maxLoraRank: 64
+
+modelPuller:
+  verification:
+    enabled: true
+    failClosed: true
+    approvedDigest: REPLACE_WITH_APPROVED_MODEL_DIGEST
+  cosignPublicKeySecret: REPLACE_WITH_COSIGN_PUBLIC_KEY_SECRET
+
+lora:
+  enabled: true
+  adapterRegistryConfigName: REPLACE_WITH_LORA_ADAPTER_REGISTRY_CONFIG
+  adapterRegistryMountPath: /etc/inference/adapters
+  adapterCachePath: /models/adapters
+  adapters:
+    REPLACE_WITH_ADAPTER_ID: oci://REPLACE_WITH_REGISTRY_HOST/adapters/REPLACE_WITH_ADAPTER@REPLACE_WITH_APPROVED_ADAPTER_DIGEST
+  routing:
+    localityLabel: REPLACE_WITH_ADAPTER_LOCALITY_LABEL
+    batchByAdapterId: true
+    assumptions:
+      - Gateway/EPP stamps the adapter id on each request before engine dispatch.
+      - Replicas advertise loaded adapter ids through the locality label.
+      - Adapter rank is standardized per pool and must be <= engine.args.maxLoraRank.
