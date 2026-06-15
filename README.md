@@ -8,6 +8,19 @@ The implementation scaffold keeps all environment-specific values as placeholder
 
 License: Apache-2.0. See [`LICENSE`](LICENSE).
 
+## Quality Gates
+
+The public scaffold is designed to pass offline without GPUs:
+
+```bash
+python3 -m venv /tmp/llm_inference_playbook_venv
+/tmp/llm_inference_playbook_venv/bin/pip install -r playbook/requirements-dev.txt
+PATH="/tmp/llm_inference_playbook_venv/bin:$PATH" make -C playbook offline
+PATH="/tmp/llm_inference_playbook_venv/bin:$PATH" python -m pytest impl/tests impl/gateway/admission/test_app.py -q --cov=impl --cov-fail-under=60
+```
+
+Live GPU/staging proof remains environment-owned; see [`impl/DEPLOYMENT_AND_VALIDATION.md`](impl/DEPLOYMENT_AND_VALIDATION.md).
+
 ## Start here — persona paths
 
 | Persona | Path |

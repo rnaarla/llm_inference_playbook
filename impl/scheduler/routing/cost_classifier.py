@@ -20,7 +20,7 @@ class RoutingConfig:
     heavy_pool: str = "heavy"
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "RoutingConfig":
+    def from_dict(cls, data: dict[str, Any]) -> RoutingConfig:
         pools = data.get("pools", {})
         return cls(
             heavy_threshold_tokens=int(data.get("heavy_threshold_tokens", 32_000)),
@@ -30,7 +30,7 @@ class RoutingConfig:
         )
 
     @classmethod
-    def from_yaml(cls, path: str | Path) -> "RoutingConfig":
+    def from_yaml(cls, path: str | Path) -> RoutingConfig:
         if yaml is None:
             raise RuntimeError("pyyaml is required to load routing YAML config")
         with Path(path).open("r", encoding="utf-8") as handle:

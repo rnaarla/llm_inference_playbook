@@ -1,9 +1,9 @@
-from fastapi.testclient import TestClient
 from pathlib import Path
 
-import app as admission_app
-from app import _outcome_counts, _request_counts, _token_counts, app
+from fastapi.testclient import TestClient
 
+from impl.gateway.admission import app as admission_app
+from impl.gateway.admission.app import _outcome_counts, _request_counts, _token_counts, app
 
 client = TestClient(app)
 admission_app.CONFIG_PATH = Path(__file__).with_name("testdata") / "tenants.test.yaml"

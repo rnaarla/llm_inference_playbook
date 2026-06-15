@@ -25,7 +25,7 @@ def test_max_tokens_admission_400_before_any_network():
 
 
 def test_route_round_robin_cycles_pool():
-    from gateway import _rr, MODELS
+    from gateway import MODELS, _rr
     _rr["phi3"] = 0
     n = len(MODELS["phi3"]["upstreams"])
     seen = set()
@@ -42,7 +42,7 @@ def test_alias_translation_table_maps_to_served_name():
 
 
 def test_route_raises_http_exception_not_crash():
-    from gateway import route
     from fastapi import HTTPException
+    from gateway import route
     with pytest.raises(HTTPException):
         route("missing")

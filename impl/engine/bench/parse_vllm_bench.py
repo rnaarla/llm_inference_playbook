@@ -11,9 +11,10 @@ from __future__ import annotations
 import argparse
 import re
 import sys
-import yaml
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
+
+import yaml
 
 
 def first_float(patterns: list[str], text: str) -> float:
@@ -90,7 +91,7 @@ def main() -> int:
             "run": {
                 "warmup_min": args.warmup_min,
                 "steady_min": args.steady_min,
-                "date": datetime.now(timezone.utc).isoformat(),
+                "date": datetime.now(UTC).isoformat(),
                 "operator": args.operator,
             },
         }

@@ -1,0 +1,18 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: pip
+    directory: /playbook
+    schedule:
+      interval: weekly
+  - package-ecosystem: pip
+    directory: /impl/gateway/admission
+    schedule:
+      interval: weekly
+  - package-ecosystem: pip
+    directory: /impl/guardrails
+    schedule:
+      interval: weekly

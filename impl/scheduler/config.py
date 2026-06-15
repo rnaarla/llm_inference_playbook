@@ -30,14 +30,14 @@ class SchedulerConfig:
     routing: RoutingConfig
 
     @classmethod
-    def from_yaml(cls, path: str | Path) -> "SchedulerConfig":
+    def from_yaml(cls, path: str | Path) -> SchedulerConfig:
         if yaml is None:
             raise RuntimeError("pyyaml is required to load scheduler YAML config")
         with Path(path).open("r", encoding="utf-8") as handle:
             return cls.from_dict(yaml.safe_load(handle) or {})
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "SchedulerConfig":
+    def from_dict(cls, data: dict[str, Any]) -> SchedulerConfig:
         scheduler = data.get("scheduler", data)
         return cls(
             wfq=WFQConfig.from_dict(_normalize_wfq(scheduler.get("wfq", scheduler))),

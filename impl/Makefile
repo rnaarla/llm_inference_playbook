@@ -19,7 +19,10 @@ ENV_VALUES ?=
 require-%:
 	@if [[ -z "$($*)" ]]; then echo "Missing required configuration: $*"; exit 2; fi
 
-.PHONY: prereqs render-engine render-observability deploy-engine deploy-gateway deploy-observability up validate-engine validate-config model-cache test-admission uninstall
+help:
+	@grep -E "^[a-zA-Z_-]+:" $(MAKEFILE_LIST) | sed "s/:.*//" | sort
+
+.PHONY: help prereqs render-engine render-observability deploy-engine deploy-gateway deploy-observability up validate-engine validate-config model-cache test-admission test-python uninstall
 
 prereqs: require-NAMESPACE require-PREREQS_RELEASE
 	helm dependency update charts/cluster-prereqs
@@ -78,6 +81,9 @@ model-cache:
 
 test-admission:
 	cd gateway/admission && python3 -m pytest test_app.py -q
+
+test-python:
+	python3 -m pytest ../impl/tests gateway/admission/test_app.py -q --cov=../impl --cov-report=term-missing --cov-fail-under=60
 
 uninstall: require-NAMESPACE require-ENGINE_RELEASE
 	helm uninstall $(ENGINE_RELEASE) -n $(NAMESPACE) || true

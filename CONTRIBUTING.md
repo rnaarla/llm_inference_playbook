@@ -19,6 +19,7 @@ does not contain real environment values.
 python3 -m venv playbook/.venv
 playbook/.venv/bin/pip install -r playbook/requirements-dev.txt
 PATH="$PWD/playbook/.venv/bin:$PATH" make -C playbook offline
+pre-commit install  # optional but recommended
 ```
 
 ## Before Opening a PR
@@ -29,6 +30,7 @@ Run:
 PATH="$PWD/playbook/.venv/bin:$PATH" make -C playbook offline
 python3 impl/ci/validate_values.py impl/environments/values.example.yaml --allow-placeholders
 python3 -m compileall -q impl
+python3 -m pytest impl/tests impl/gateway/admission/test_app.py -q --cov=impl --cov-fail-under=60
 git diff --check
 ```
 
@@ -53,6 +55,10 @@ Do not commit:
 
 Use `REPLACE_WITH_*` placeholders in public scaffolds and document them in
 `impl/config/README.md`.
+
+## GitHub Actions Pinning
+
+Workflow actions must be pinned to full commit SHAs, with the human-readable version kept in a trailing comment. Do not introduce floating tags such as `@v4` in `.github/workflows/*.yml`.
 
 ## Style
 

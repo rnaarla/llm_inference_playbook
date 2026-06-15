@@ -22,6 +22,10 @@ if command -v kubeconform >/dev/null 2>&1; then
   echo "==> kubeconform"
   kubeconform -summary -ignore-missing-schemas "${HELM}"/*.yaml
 else
+  if [[ "${LINT_REQUIRE_KUBECONFORM:-0}" == "1" ]]; then
+    echo "FAIL: kubeconform required when LINT_REQUIRE_KUBECONFORM=1"
+    exit 1
+  fi
   echo "==> kubeconform not installed — skipping schema conformance (install for full lint-k8s)"
 fi
 

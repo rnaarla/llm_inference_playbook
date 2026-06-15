@@ -1,0 +1,40 @@
+nameOverride: vllm-ci
+profile: h100-vllm-kserve
+replicaCount: 1
+image:
+  repository: vllm/vllm-openai
+  tag: v0.9.1
+model:
+  name: llama-ci
+  servedName: test-served-model
+  artifact: oci://registry.example.com/models/test-model:ci
+engine:
+  args:
+    tensorParallelSize: 1
+    dtype: bfloat16
+    quantization: fp8
+    kvCacheDtype: fp8
+    maxModelLen: 4096
+    maxNumSeqs: 8
+    maxNumBatchedTokens: 1024
+    gpuMemoryUtilization: "0.80"
+modelPuller:
+  cosignPublicKeySecret: cosign-ci
+hfToken:
+  secretName: hf-token-ci
+resources:
+  limits:
+    nvidia.com/gpu: 1
+nodeSelector:
+  nvidia.com/gpu.product: NVIDIA-L40S
+keda:
+  minReplicaCount: 1
+  maxReplicaCount: 2
+  cooldownPeriod: 60
+  prometheusAddress: http://prometheus-ci:9090
+  queueThreshold: "2"
+networkPolicy:
+  gatewayLabel:
+    role: inference-gateway
+  monitoringNamespaceLabel:
+    kubernetes.io/metadata.name: observability-ci

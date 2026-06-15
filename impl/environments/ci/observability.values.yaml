@@ -1,0 +1,26 @@
+nameOverride: inference-observability-ci
+global:
+  environmentName: ci
+  namespace: llm-ci
+  monitoringNamespace: observability-ci
+alerts:
+  severities:
+    ttft: warning
+    queue: warning
+    kv: warning
+    xid: critical
+  slo:
+    ttftP95Seconds: 0.5
+  queue:
+    waitingToRunningRatio: 2
+  kv:
+    usagePercent: 0.92
+  xid:
+    lookback: 5m
+otel:
+  image:
+    repository: otel/opentelemetry-collector-contrib
+    tag: 0.110.0
+  serviceNamespace: llm-ci
+  otlpEndpoint: tempo.observability-ci.svc:4317
+  memoryLimitMiB: 256

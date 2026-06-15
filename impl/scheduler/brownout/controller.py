@@ -49,7 +49,7 @@ class BrownoutConfig:
     rungs: tuple[BrownoutRung, ...] = tuple(BrownoutRung(level, threshold, actions) for level, threshold, actions in DEFAULT_RUNGS)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "BrownoutConfig":
+    def from_dict(cls, data: dict[str, Any]) -> BrownoutConfig:
         raw_rungs = data.get("rungs")
         if raw_rungs:
             rungs = tuple(
@@ -70,7 +70,7 @@ class BrownoutConfig:
         )
 
     @classmethod
-    def from_yaml(cls, path: str | Path) -> "BrownoutConfig":
+    def from_yaml(cls, path: str | Path) -> BrownoutConfig:
         if yaml is None:
             raise RuntimeError("pyyaml is required to load brownout YAML config")
         with Path(path).open("r", encoding="utf-8") as handle:

@@ -3,6 +3,7 @@
 import asyncio
 import os
 import sys
+
 import httpx
 
 URL = os.environ.get("STAGING_GATEWAY_URL", "http://localhost:8080")

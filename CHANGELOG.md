@@ -9,16 +9,17 @@ versioning once public releases begin.
 
 ### Added
 
-- Modular reference playbook under `docs/`.
-- Validation harness under `playbook/`.
-- Environment-agnostic implementation scaffold under `impl/`.
-- Open-source readiness docs and safe example configs.
+- Track A/B production-readiness design.
+- CI hardening plan and initial coverage scaffolding.
 
 ## [0.1.0] - Planned
 
 ### Added
 
-- Initial public reference playbook and scaffold.
+- Modular reference playbook under `docs/`.
+- Validation harness under `playbook/`.
+- Environment-agnostic implementation scaffold under `impl/`.
+- Open-source project files, safe examples, and setup/status docs.
 
 ### Notes
 

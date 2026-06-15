@@ -1,0 +1,35 @@
+nameOverride: llm-gateway-ci
+gateway:
+  className: kgateway
+  hostnames:
+    - llm.ci.example.com
+engine:
+  serviceName: vllm-ci
+admission:
+  image:
+    repository: registry.example.com/inference-admission
+    tag: ci
+  serviceName: inference-admission-ci
+  configName: inference-admission-tenants-ci
+  replicas: 1
+  defaultTenantId: standard-ci
+  tenants:
+    models:
+      llama-ci:
+        served_name: test-served-model
+        max_context_tokens: 4096
+    tenants:
+      standard-ci:
+        priority_class: Standard
+guardrails:
+  image:
+    repository: registry.example.com/inference-guardrails
+    tag: ci
+  serviceName: inference-guardrails-ci
+  configName: guardrail-policy-ci
+  replicas: 1
+policy:
+  extAuthz:
+    serviceName: inference-admission-ci
+  guardrails:
+    serviceName: inference-guardrails-ci

@@ -38,7 +38,7 @@ Build this against a 1B model and you understand 80% of vLLM's scheduler — inc
 - **Continuous batching**: waiting/running/swapped queues; token-granular admission; preemption by recompute or swap when KV exhausts.
 - **V1 engine** (default in 2025-era releases — verify your pin): zero-copy DMA, pinned host memory, restructured scheduler, independent prefill/decode handling.
 - **Chunked prefill** (Sarathi lineage): long prefills split into `--max-num-batched-tokens` chunks, piggybacked with decodes → protects ITL from long-prompt interference.
-- Prefix caching, piecewise CUDA graphs, torch.compile, FlashAttention/FlashInfer kernel stack. **[T2]** CUDA graph pools splinter under dynamic batching — bucketize graph capture and pad to power-of-2 lengths ([Appendix G](appendices/G-scale-tier-requirements.md#t2-cuda-graph-bucketization)).
+- Prefix caching, piecewise CUDA graphs, torch.compile, FlashAttention/FlashInfer kernel stack. **[T2]** CUDA graph pools splinter under dynamic batching — bucketize graph capture and pad to power-of-2 lengths ([Appendix G](G-scale-tier-requirements.md#t2-cuda-graph-bucketization)).
 
 ## 3.3 SGLang internals
 - **RadixAttention** **[Cited: SGLang paper/LMSYS report, Jan 2024]**: KV cache in a radix tree keyed by token sequence; matched prefixes cost zero prefill; **LRU eviction** over tree nodes under memory pressure — note that under severe pressure, eviction of hot shared prefixes converts cache-hit traffic to cache-miss TTFT, which is why hit-rate monitoring matters (§2.5). Up to 6.4× on prefix-heavy workloads vs then-current vLLM (paper config; vLLM has since added prefix caching — re-benchmark, **[Directional]**).

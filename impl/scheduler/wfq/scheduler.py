@@ -8,10 +8,11 @@ output tokens are known.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from time import monotonic
-from typing import Any, Callable
+from typing import Any
 
 try:
     import yaml
@@ -46,7 +47,7 @@ class WFQConfig:
     default_weight: float = 1.0
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "WFQConfig":
+    def from_dict(cls, data: dict[str, Any]) -> WFQConfig:
         tenants = data.get("tenants", {})
         if not isinstance(tenants, dict) or not tenants:
             raise ValueError("wfq.tenants must be a non-empty mapping")
@@ -65,7 +66,7 @@ class WFQConfig:
         )
 
     @classmethod
-    def from_yaml(cls, path: str | Path) -> "WFQConfig":
+    def from_yaml(cls, path: str | Path) -> WFQConfig:
         if yaml is None:
             raise RuntimeError("pyyaml is required to load WFQ YAML config")
         with Path(path).open("r", encoding="utf-8") as handle:

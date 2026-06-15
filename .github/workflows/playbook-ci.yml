@@ -3,42 +3,105 @@ name: playbook-ci
 on:
   push:
     branches: [main]
-    paths: ['playbook/**', 'docs/**', 'impl/**', 'examples/**', 'README.md', '.github/**', '*.md', '.gitleaks.toml']
+    paths: ['playbook/**', 'docs/**', 'impl/**', 'examples/**', 'README.md', '.github/**', '*.md', '.gitleaks.toml', 'pyproject.toml']
   pull_request:
-    paths: ['playbook/**', 'docs/**', 'impl/**', 'examples/**', 'README.md', '.github/**', '*.md', '.gitleaks.toml']
+    paths: ['playbook/**', 'docs/**', 'impl/**', 'examples/**', 'README.md', '.github/**', '*.md', '.gitleaks.toml', 'pyproject.toml']
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: '3.12'
+  HELM_VERSION: v3.16.4
+  KUBECONFORM_VERSION: v0.6.7
 
 jobs:
-  lint-and-unit:
+  lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
-          python-version: '3.12'
+          python-version: ${{ env.PYTHON_VERSION }}
       - name: Install dev dependencies
         run: |
           python3 -m venv playbook/.venv
           playbook/.venv/bin/pip install -r playbook/requirements-dev.txt
-      - name: lint-k8s (structural)
-        run: bash playbook/ci/lint-k8s.sh
-      - name: validate-promql (offline)
-        run: bash playbook/ci/validate-promql.sh
-      - name: test-gateway-unit
-        run: PATH="$PWD/playbook/.venv/bin:$PATH" make -C playbook test-gateway-unit
-      - name: offline bundle
+      - name: Ruff lint
+        run: playbook/.venv/bin/ruff check impl playbook/ci
+      - name: Compile implementation Python
+        run: playbook/.venv/bin/python -m compileall -q impl
+      - name: Whitespace check
+        run: git diff --check
+
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install dev dependencies
+        run: |
+          python3 -m venv playbook/.venv
+          playbook/.venv/bin/pip install -r playbook/requirements-dev.txt
+      - name: Offline bundle
         run: PATH="$PWD/playbook/.venv/bin:$PATH" make -C playbook offline
-      - name: Validate implementation example values
+      - name: Implementation unit and contract tests
+        run: |
+          PATH="$PWD/playbook/.venv/bin:$PATH" \
+          playbook/.venv/bin/python -m pytest impl/tests impl/gateway/admission/test_app.py -q \
+            --cov=impl --cov-report=term-missing --cov-fail-under=60
+      - name: Validate implementation examples
         run: |
           playbook/.venv/bin/python impl/ci/validate_values.py impl/environments/values.example.yaml --allow-placeholders
           playbook/.venv/bin/python impl/ci/validate_values.py examples/dev.local.yaml
           playbook/.venv/bin/python impl/ci/validate_values.py examples/staging.local.yaml
           playbook/.venv/bin/python impl/ci/validate_values.py examples/production.local.yaml
-      - name: Compile implementation Python
-        run: playbook/.venv/bin/python -m compileall -q impl
-      - name: Whitespace check
-        run: git diff --check
+
+  charts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Install Helm
+        run: |
+          curl -fsSL "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz" -o /tmp/helm.tgz
+          tar -xzf /tmp/helm.tgz -C /tmp
+          sudo mv /tmp/linux-amd64/helm /usr/local/bin/helm
+      - name: Install kubeconform
+        run: |
+          curl -fsSL "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" -o /tmp/kubeconform.tgz
+          tar -xzf /tmp/kubeconform.tgz -C /tmp
+          sudo mv /tmp/kubeconform /usr/local/bin/kubeconform
+      - name: Helm lint and render
+        run: |
+          helm dependency build impl/charts/cluster-prereqs
+          helm lint impl/charts/cluster-prereqs
+          helm template test impl/charts/cluster-prereqs --namespace test > /tmp/cluster-prereqs.yaml
+          helm lint impl/charts/inference-engine -f impl/environments/ci/inference-engine.values.yaml
+          helm template test impl/charts/inference-engine --namespace test -f impl/environments/ci/inference-engine.values.yaml > /tmp/inference-engine.yaml
+          helm lint impl/charts/gateway -f impl/environments/ci/gateway.values.yaml
+          helm template test impl/charts/gateway --namespace test -f impl/environments/ci/gateway.values.yaml > /tmp/gateway.yaml
+          helm lint impl/charts/observability -f impl/environments/ci/observability.values.yaml
+          helm template test impl/charts/observability --namespace test -f impl/environments/ci/observability.values.yaml > /tmp/observability.yaml
+          kubeconform -strict -ignore-missing-schemas /tmp/cluster-prereqs.yaml /tmp/inference-engine.yaml /tmp/gateway.yaml /tmp/observability.yaml
+      - name: lint-k8s fail-closed
+        run: LINT_REQUIRE_KUBECONFORM=1 bash playbook/ci/lint-k8s.sh
+
+  links:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Internal markdown link check
+        run: python3 scripts/check_internal_links.py
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Secret scan
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -46,5 +109,5 @@ jobs:
     runs-on: ubuntu-latest
     if: false  # enable on self-hosted GPU runner: if: github.event_name == 'workflow_dispatch'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - run: make -C playbook smoke-vllm bench-local validate-promql

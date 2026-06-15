@@ -1,0 +1,6 @@
+slos:
+  ttft_p95_seconds: 0.5
+  inter_token_latency_p95_seconds: 0.05
+  availability_ratio: 0.999
+  queue_wait_p95_seconds: 0.25
+  cancellation_waste_ratio: 0.02

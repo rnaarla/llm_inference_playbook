@@ -31,7 +31,7 @@ class ReserveConfig:
     tenant_kv_tokens: dict[str, int] | None = None
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ReserveConfig":
+    def from_dict(cls, data: dict[str, Any]) -> ReserveConfig:
         tenants = data.get("tenant_kv_tokens", {})
         return cls(
             knee_concurrency=int(data["knee_concurrency"]),
@@ -43,7 +43,7 @@ class ReserveConfig:
         )
 
     @classmethod
-    def from_yaml(cls, path: str | Path) -> "ReserveConfig":
+    def from_yaml(cls, path: str | Path) -> ReserveConfig:
         if yaml is None:
             raise RuntimeError("pyyaml is required to load reserve YAML config")
         with Path(path).open("r", encoding="utf-8") as handle:

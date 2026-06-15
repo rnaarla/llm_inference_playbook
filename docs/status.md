@@ -10,13 +10,15 @@ Status terms:
 | Area | Status | Notes |
 |---|---|---|
 | Reference playbook | Reference complete | `docs/01`–`05`, appendices, companions |
-| Offline checks | Implemented | `make -C playbook offline` |
+| Offline checks | Implemented | `make -C playbook offline` plus config/example validation |
 | Engine chart | Ready to prove | requires GPU cluster and signed model artifact |
-| Gateway/admission | Ready to prove | requires Gateway API controller policy mapping |
+| Gateway/admission | Ready to prove | local admission tests and coverage are implemented; live controller policy mapping remains |
 | Scheduler | Ready to prove | library primitives; requires gateway/EPP integration |
 | Observability | Ready to prove | requires live Prometheus/Grafana/OTel |
 | Governance/guardrails/LoRA | Ready to prove | requires registry, keys, eval infra, guardrail model |
 | Frontier fabric | Scaffolded | requires multi-node GPU fabric |
+| Test coverage | Implemented baseline | `impl/` logic coverage gate starts at 60%; current local run is ~77% |
+| CI/CD hardening | Implemented baseline | SHA-pinned actions, split CI jobs, chart render/lint, ruff, coverage, link check, secret scan |
 | Fleet validation | Not proven | user-provided environment required |
 
 ## Current Proof Boundary

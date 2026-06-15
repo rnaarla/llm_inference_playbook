@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Set validated_on / validated_by on h100-vllm-kserve after fleet pass."""
-import yaml
 from datetime import date
 from pathlib import Path
+
+import yaml
 
 lock_path = Path(__file__).resolve().parent.parent / "versions.lock"
 lock = yaml.safe_load(lock_path.read_text())

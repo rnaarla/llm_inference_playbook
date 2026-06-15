@@ -1,8 +1,10 @@
 # gateway.py — LEARNING ARTIFACT. DO NOT DEPLOY.
 # pip install fastapi uvicorn httpx
 # Run single-worker only: uvicorn gateway:app --workers 1
-import httpx, time
-from fastapi import FastAPI, Request, HTTPException
+import time
+
+import httpx
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 app = FastAPI()
@@ -36,17 +38,18 @@ async def chat(req: Request):
     t0 = time.perf_counter()
     if body.get("stream"):
         async def relay():
-            async with httpx.AsyncClient(timeout=None) as c:
-                async with c.stream("POST", f"{upstream}/v1/chat/completions", json=body) as r:
-                    if r.status_code != 200:               # propagate upstream failure
-                        yield f'data: {{"error": "upstream {r.status_code}"}}\n\n'.encode()
-                        return
-                    first = True
-                    async for chunk in r.aiter_bytes():
-                        if first:
-                            print(f"TTFT={time.perf_counter()-t0:.3f}s upstream={upstream}")
-                            first = False
-                        yield chunk
+            async with httpx.AsyncClient(timeout=None) as c, c.stream(
+                "POST", f"{upstream}/v1/chat/completions", json=body
+            ) as r:
+                if r.status_code != 200:  # propagate upstream failure
+                    yield f'data: {{"error": "upstream {r.status_code}"}}\n\n'.encode()
+                    return
+                first = True
+                async for chunk in r.aiter_bytes():
+                    if first:
+                        print(f"TTFT={time.perf_counter()-t0:.3f}s upstream={upstream}")
+                        first = False
+                    yield chunk
         return StreamingResponse(relay(), media_type="text/event-stream")
     async with httpx.AsyncClient(timeout=120) as c:
         r = await c.post(f"{upstream}/v1/chat/completions", json=body)
