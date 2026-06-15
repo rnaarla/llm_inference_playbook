@@ -231,6 +231,20 @@ This scaffold does not install a scheduler service by itself.
 | `REPLACE_WITH_GUARDRAIL_CONFIG_NAME` | Guardrail route policy ConfigMap | GitOps / Helm values | Kubernetes ConfigMap name | `guardrail-policy-staging` |
 | `REPLACE_WITH_REQUEST_ID` | Request id propagated to guardrail audit | Gateway | UUID/string | `req-123` |
 
+
+### Gateway Policy Examples
+
+| Placeholder | Purpose | Config source | Expected value | Sample |
+|---|---|---|---|---|
+| `REPLACE_WITH_GATEWAY_AUTH_POLICY_NAME` | kgateway external auth policy name | Gateway overlay | Kubernetes resource name | `llm-auth-policy-staging` |
+| `REPLACE_WITH_GATEWAY_SECURITY_POLICY_NAME` | Envoy Gateway security policy name | Gateway overlay | Kubernetes resource name | `llm-security-policy-staging` |
+| `REPLACE_WITH_HTTPROUTE_NAME` | HTTPRoute bound to admission policy | Gateway chart output | Kubernetes resource name | `llm-gateway-openai` |
+| `REPLACE_WITH_GUARDRAIL_PROVIDER_NAME` | Guardrail backend provider name | Safety platform | provider id | `llama-guard` |
+| `REPLACE_WITH_PROVIDER_TYPE` | Guardrail provider type | Safety platform | enum/string | `http` |
+| `REPLACE_WITH_GUARDRAIL_PROVIDER_ENDPOINT` | Guardrail provider endpoint | Secret/config store | URL | `https://guardrails.staging.example.com` |
+| `REPLACE_WITH_GUARDRAIL_PROVIDER_TIMEOUT_MS` | Guardrail provider timeout | Route policy | integer ms | `250` |
+| `REPLACE_WITH_GUARDRAIL_PROVIDER_AUTH_SECRET` | Secret for guardrail provider auth | Secret manager | Kubernetes Secret name | `guardrail-provider-auth` |
+
 ### LoRA, Eval, and Frontier
 
 | Placeholder | Purpose | Config source | Expected value | Sample |

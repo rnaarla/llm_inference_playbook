@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "fabric_baseline_report",
+  "type": "object",
+  "required": ["profile", "topology", "run", "macro", "micro", "gate"],
+  "properties": {
+    "profile": {"type": "string", "minLength": 1},
+    "topology": {"type": "string", "minLength": 1},
+    "run": {
+      "type": "object",
+      "required": ["date", "operator", "gpu_count"],
+      "properties": {
+        "date": {"type": "string"},
+        "operator": {"type": "string"},
+        "gpu_count": {"type": "integer", "minimum": 1}
+      }
+    },
+    "macro": {"$ref": "#/$defs/measurement"},
+    "micro": {"$ref": "#/$defs/measurement"},
+    "gate": {
+      "type": "object",
+      "required": ["min_fraction_theoretical", "passed"],
+      "properties": {
+        "min_fraction_theoretical": {"type": "number", "minimum": 0, "maximum": 1},
+        "passed": {"type": "boolean"}
+      }
+    }
+  },
+  "$defs": {
+    "measurement": {
+      "type": "object",
+      "required": ["min_bytes", "max_bytes", "busbw_gbs"],
+      "properties": {
+        "min_bytes": {"type": "string"},
+        "max_bytes": {"type": "string"},
+        "busbw_gbs": {"type": "number", "minimum": 0}
+      }
+    }
+  }
+}

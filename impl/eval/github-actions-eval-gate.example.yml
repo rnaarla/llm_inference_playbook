@@ -1,0 +1,23 @@
+name: eval-gate-example
+
+on:
+  workflow_dispatch:
+    inputs:
+      model_artifact:
+        required: true
+        type: string
+
+jobs:
+  eval-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve promotion metadata
+        run: echo "Resolve REPLACE_WITH_PROMOTION_METADATA_URI"
+      - name: Run baseline evals
+        run: echo "Run GSM8K, MMLU, IFEval against ${{ inputs.model_artifact }}"
+      - name: Run domain eval
+        run: echo "Run REPLACE_WITH_DOMAIN_EVAL_DATASET_URI"
+      - name: Run replay eval
+        run: echo "Run REPLACE_WITH_PRODUCTION_REPLAY_DATASET_URI"
+      - name: Enforce rollback policy
+        run: echo "Compare against impl/governance/eval-gate/pipeline.yaml thresholds"

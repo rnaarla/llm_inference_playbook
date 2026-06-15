@@ -1,0 +1,13 @@
+provider:
+  name: REPLACE_WITH_GUARDRAIL_PROVIDER_NAME
+  type: REPLACE_WITH_PROVIDER_TYPE
+  endpoint: REPLACE_WITH_GUARDRAIL_PROVIDER_ENDPOINT
+  timeout_ms: REPLACE_WITH_GUARDRAIL_PROVIDER_TIMEOUT_MS
+  auth:
+    secret_name: REPLACE_WITH_GUARDRAIL_PROVIDER_AUTH_SECRET
+    header_name: Authorization
+reason_codes:
+  - policy_violation
+  - pii_detected
+  - prompt_injection
+  - backend_unavailable

@@ -1,0 +1,24 @@
+apiVersion: gateway.kgateway.dev/v1alpha1
+kind: ExternalAuthPolicy
+metadata:
+  name: REPLACE_WITH_GATEWAY_AUTH_POLICY_NAME
+  namespace: REPLACE_WITH_INFERENCE_NAMESPACE
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: REPLACE_WITH_HTTPROUTE_NAME
+  extensionRef:
+    name: REPLACE_WITH_ADMISSION_SERVICE_NAME
+    port: 8080
+  request:
+    includeHeaders:
+      - X-Tenant-ID
+      - X-Request-ID
+      - Content-Type
+  response:
+    allowedUpstreamHeaders:
+      - X-Tenant-ID
+      - X-Priority-Class
+      - X-Served-Model
+      - X-Request-ID

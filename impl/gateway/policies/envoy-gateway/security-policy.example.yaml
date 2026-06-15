@@ -1,0 +1,19 @@
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: REPLACE_WITH_GATEWAY_SECURITY_POLICY_NAME
+  namespace: REPLACE_WITH_INFERENCE_NAMESPACE
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: REPLACE_WITH_HTTPROUTE_NAME
+  extAuth:
+    grpc:
+      backendRefs:
+        - name: REPLACE_WITH_ADMISSION_SERVICE_NAME
+          port: 8080
+    headersToBackend:
+      - X-Tenant-ID
+      - X-Request-ID
+      - Content-Type

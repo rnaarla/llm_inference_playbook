@@ -1,0 +1,17 @@
+profile: moe-multinode-interim
+topology: example-hgx-h100
+run:
+  date: "2026-06-14T00:00:00Z"
+  operator: example-operator
+  gpu_count: 8
+macro:
+  min_bytes: 1G
+  max_bytes: 8G
+  busbw_gbs: 450.0
+micro:
+  min_bytes: "8"
+  max_bytes: 2M
+  busbw_gbs: 300.0
+gate:
+  min_fraction_theoretical: 0.8
+  passed: true

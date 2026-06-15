@@ -16,9 +16,10 @@ Status terms:
 | Scheduler | Ready to prove | library primitives; requires gateway/EPP integration |
 | Observability | Ready to prove | requires live Prometheus/Grafana/OTel |
 | Governance/guardrails/LoRA | Ready to prove | requires registry, keys, eval infra, guardrail model |
-| Frontier fabric | Scaffolded | requires multi-node GPU fabric |
+| Frontier fabric | Ready to prove | NCCL/MoE schemas, parser, samples, XID scaffold; requires multi-node GPU fabric for proof |
 | Test coverage | Implemented baseline | `impl/` logic coverage gate starts at 60%; current local run is ~77% |
 | CI/CD hardening | Implemented baseline | SHA-pinned actions, split CI jobs, chart render/lint, ruff, coverage, link check, secret scan |
+| Non-infra production scaffolds | Implemented | gateway policies, secret templates, threat/security docs, eval workflow examples, NCCL/MoE schemas |
 | Fleet validation | Not proven | user-provided environment required |
 
 ## Current Proof Boundary

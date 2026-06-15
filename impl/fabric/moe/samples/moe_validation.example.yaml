@@ -1,0 +1,14 @@
+profile: moe-multinode-interim
+model: example-moe-model
+topology: example-multinode-ib
+parallelism:
+  tp: 8
+  pp: 2
+  ep: 8
+results:
+  ttft_p95_ms: 750.0
+  tpot_p95_ms: 45.0
+  expert_imbalance_ratio: 1.15
+gate:
+  passed: true
+  notes: redacted example only; replace with live evidence
